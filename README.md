@@ -10,17 +10,19 @@ Overlay tático e **bodycam noir 100% nativo para Foundry VTT v14 (Delta Green)*
 
 ## ✨ Recursos Principais
 
-- **Estética Bodycam Noir / Dossiê Tático:** Fundo 100% transparente para OBS com barra superior de operação (`REC`, relógio da operação, codinome e tag de sigilo como `CLASSIFIED` / `COMPROMISED` / `STABLE`).
+- **Estética Bodycam Noir / Dossiê Tático:** Fundo 100% transparente para OBS com barra superior de operação (`REC`, indicador **DEFCON 1–5**, ticker **Now Playing** automático das playlists do Foundry, relógio da operação, codinome e tag de sigilo como `CLASSIFIED` / `COMPROMISED` / `STABLE`).
+- **Molduras por Jogador & Gerador VDO.Ninja (v1.1.0):** Cada slot de agente (`p1`–`p6`) pode ficar **Transparente**, exibir o **Retrato do Agente** automaticamente ou incorporar uma **Webcam via VDO.Ninja (`<iframe>`)** com gerador de links `Push` / `View` em 1 clique no configurador.
 - **Zero Servidor Externo:** Funciona perfeitamente em servidores **Foundry hospedados em VPS (HTTPS)** sem problemas de CORS ou Mixed Content.
 - **Cards de Agentes em Tempo Real:**
-  - **HP (Pontos de Vida):** Barra com pulso ECG e alerta visual de *Ferimento Crítico / Inconsciente* (`HP <= 2`).
+  - **HP (Pontos de Vida):** Barra com pulso ECG, alerta de *Ferimento Crítico / Inconsciente* (`HP <= 2`) e carimbo **`KIA // FILE SEALED`** quando `HP === 0`.
   - **SAN (Sanidade) & Ponto de Ruptura:** Barra em âmbar/ciano fosforescente que entra em modo glitch/estática vermelha ao se aproximar ou atingir o **Ponto de Ruptura** (`currentBreakingPoint`).
   - **WP (Força de Vontade):** Acompanhamento em tempo real de `wp.value / wp.max` e alerta de exaustão.
   - **Adaptações:** Indicadores visuais de adaptação a **Violência** e **Impotência** (incidentes 1–3 e estado *Adaptado*).
   - **Condições & Turno Ativo:** Ícones de status ativos e destaque tático no agente ativo em combate.
 - **Entretenimento para Live (OBS):**
+  - **Scene / Location Lower-Third:** Barra militar animada exibida automaticamente ao trocar de cena (`canvasReady`) com classificação, nome do local e timestamp.
   - **Ticker de Rolagens d100:** Feed ao vivo com resultados do sistema Delta Green (`CRITICAL SUCCESS`, `SUCCESS`, `FAILURE`, `FUMBLE`, `SAN CHECK`, `LETHALITY`) — *nunca vaza sussurros ou rolagens cegas do Mestre*.
-  - **Alertas Dramáticos na Tela:** Banners animados para **Ponto de Ruptura Atingido**, **Perda Grave de Sanidade**, **Ferimento Crítico**, **Sucesso Crítico / Fumble** e **Letalidade**.
+  - **Alertas Dramáticos na Tela:** Banners animados para **Ponto de Ruptura Atingido**, **Degradação de Vínculo (Bond)**, **Perda Grave de Sanidade**, **Ferimento Crítico**, **Sucesso Crítico / Fumble** e **Letalidade**.
   - **Spotlight de Handouts & Barra de Ameaça:** Destaque cinematográfico para documentos confidenciais e barra de alvo prioritário para antagonistas (`npc` / `unnatural`).
 - **Configuração Visual (`ApplicationV2`):** Botão **`Stream HUD DG`** na aba de Atores com palco drag-and-drop (`1920x1080`) e disparo de alertas de teste via `BroadcastChannel`.
 

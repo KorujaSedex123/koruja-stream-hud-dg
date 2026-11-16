@@ -15,6 +15,10 @@
       "OperationName": "Codinome da Operação",
       "AgencyStatus": "Status Tático da Agência",
       "ShowOpClock": "Exibir Relógio / Timestamp da Bodycam",
+      "ShowSceneLowerThird": "Exibir Lower-Third de Cena / Localização",
+      "SceneClassification": "Classificação do Lower-Third de Cena",
+      "ShowNowPlaying": "Exibir Ticker de Música (Now Playing)",
+      "DefconLevel": "Nível de Ameaça DEFCON",
       "ConfigMenuName": "Configuração do Stream HUD (Delta Green)",
       "ConfigMenuLabel": "Abrir Configurador do Stream HUD DG",
       "ConfigMenuHint": "Selecione agentes, posicione os cards no palco 1920x1080 e dispare alertas de teste."
@@ -49,7 +53,32 @@
       "SaveButton": "Salvar Configuração",
       "SavedNotice": "Stream HUD Delta Green atualizado com sucesso.",
       "OpNameLabel": "Codinome da Operação",
-      "AgencyStatusLabel": "Tag de Status"
+      "AgencyStatusLabel": "Tag de Status",
+      "VdoRoomLabel": "Sala VDO.Ninja",
+      "VdoRoomPlaceholder": "DeltaGreenOp",
+      "SlotModeTransparent": "Transparente (Padrão)",
+      "SlotModePortrait": "Retrato do Agente",
+      "SlotModeIframe": "Webcam / Iframe (VDO.Ninja)",
+      "SlotUrlPlaceholder": "URL do VDO.Ninja (view) ou link...",
+      "VdoGenBtn": "VDO",
+      "VdoGenTitle": "Gerar link VDO.Ninja (copia Push URL para o jogador)",
+      "VdoCopiedNotice": "Link de câmera (Push) de {name} copiado! Envie ao jogador.",
+      "DefconLabel": "Nível DEFCON",
+      "SceneClassLabel": "Classificação da Cena",
+      "ShowLowerThird": "Exibir Lower-Third ao Trocar Cena",
+      "ShowNowPlaying": "Exibir Música Tocando (Now Playing)",
+      "TestLowerThird": "Testar Lower-Third",
+      "TestBondDegraded": "Testar Degradação de Vínculo"
+    },
+    "Defcon": {
+      "D1": "DEFCON 1 — AMEAÇA MÁXIMA",
+      "D2": "DEFCON 2 — ALERTA CRÍTICO",
+      "D3": "DEFCON 3 — PRONTIDÃO ELEVADA",
+      "D4": "DEFCON 4 — VIGILÂNCIA ATIVA",
+      "D5": "DEFCON 5 — NORMALIDADE"
+    },
+    "Card": {
+      "KiaStamp": "KIA // ARQUIVO SELADO"
     },
     "Status": {
       "CLASSIFIED": "CONFIDENCIAL",
@@ -74,7 +103,8 @@
       "Round": "RODADA",
       "Exploration": "EXPLORAÇÃO",
       "OutOfCombat": "Fora de Combate",
-      "TurnOf": "Turno de"
+      "TurnOf": "Turno de",
+      "NowPlayingPrefix": "TOCANDO:"
     },
     "Outcomes": {
       "CritSuccess": "SUCESSO CRÍTICO",
@@ -90,7 +120,8 @@
       "BreakingPointTitle": "PONTO DE RUPTURA ATINGIDO",
       "SanLossTitle": "PERDA GRAVE DE SANIDADE",
       "CriticalWoundTitle": "FERIMENTO CRÍTICO / INCONSCIENTE",
-      "LethalityTitle": "IMPACTO LETAL DETECTADO"
+      "LethalityTitle": "IMPACTO LETAL DETECTADO",
+      "BondDegradedTitle": "VÍNCULO DEGRADADO"
     }
   }
 }

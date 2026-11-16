@@ -88,6 +88,45 @@ function formatTacticalClock() {
   return `${hh}:${mm}:${ss}`;
 }
 
+function formatLowerThirdTimestamp() {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mo = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  return `${yyyy}-${mo}-${dd} ${formatTacticalClock()}`;
+}
+
+function slugifyName(name) {
+  return String(name || "agent")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "agent";
+}
+
+function buildVdoLinks(room, actor) {
+  const safeRoom = encodeURIComponent(slugifyName(room || "DeltaGreenOp"));
+  const streamId = `${slugifyName(actor?.name)}_${String(actor?.id || "").slice(0, 5)}`;
+  const label = encodeURIComponent(actor?.name || "Agent");
+  return {
+    pushUrl: `https://vdo.ninja/?room=${safeRoom}&push=${streamId}&label=${label}&noaudio`,
+    viewUrl: `https://vdo.ninja/?room=${safeRoom}&view=${streamId}&cleanoutput&transparent`
+  };
+}
+
+function getActivePlaylistTrack() {
+  const playlists = game?.playlists?.contents || [];
+  for (const pl of playlists) {
+    if (!pl.playing) continue;
+    const sound = pl.sounds?.find(s => s.playing);
+    if (sound) {
+      return { playlist: pl.name, track: sound.name };
+    }
+  }
+  return null;
+}
+
 function analyzeDeltaGreenRoll(message) {
   const roll = message?.rolls?.[0];
   if (!roll) return null;
@@ -182,6 +221,12 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
     const operationName = game.settings.get(MODULE_ID, "operationName") || "";
     const agencyStatus = game.settings.get(MODULE_ID, "agencyStatus") || "CLASSIFIED";
     const showOpClock = game.settings.get(MODULE_ID, "showOpClock");
+    const playerSlotConfigs = game.settings.get(MODULE_ID, "playerSlotConfigs") || {};
+    const vdoRoomName = game.settings.get(MODULE_ID, "vdoRoomName") || "DeltaGreenOp";
+    const defconLevel = game.settings.get(MODULE_ID, "defconLevel") || "3";
+    const sceneClassification = game.settings.get(MODULE_ID, "sceneClassification") || "EYES ONLY // ACTIVE AO";
+    const showSceneLowerThird = game.settings.get(MODULE_ID, "showSceneLowerThird");
+    const showNowPlaying = game.settings.get(MODULE_ID, "showNowPlaying");
     const savedPositions = game.settings.get(MODULE_ID, "cardPositions") || {};
 
     this.#draftPositions = foundry.utils.mergeObject(
@@ -211,6 +256,12 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
       operationName,
       agencyStatus,
       showOpClock,
+      playerSlotConfigs,
+      vdoRoomName,
+      defconLevel,
+      sceneClassification,
+      showSceneLowerThird,
+      showNowPlaying,
       positions: this.#draftPositions
     };
   }
@@ -226,16 +277,34 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
       const hp = getActorHealth(actor);
       const san = getActorSanity(actor);
       const wp = getActorWP(actor);
+      const slotCfg = context.playerSlotConfigs[actor.id] || { mode: "transparent", url: "" };
+      const slotMode = slotCfg.mode || "transparent";
+      const slotUrl = slotCfg.url || "";
       return `
-        <label class="koruja-config-row">
-          <input type="checkbox" name="actor_${actor.id}" value="${actor.id}" ${checked}>
-          <img src="${escapeHtml(actor.img)}" alt="${escapeHtml(actor.name)}">
-          <div class="koruja-config-info">
-            <strong>${escapeHtml(actor.name)}</strong>
-            <span>HP ${hp.value}/${hp.max} | SAN ${san.value} (BP ${san.bp}) | WP ${wp.value}/${wp.max}</span>
+        <div class="koruja-config-card">
+          <label class="koruja-config-row">
+            <input type="checkbox" name="actor_${actor.id}" value="${actor.id}" ${checked}>
+            <img src="${escapeHtml(actor.img)}" alt="${escapeHtml(actor.name)}">
+            <div class="koruja-config-info">
+              <strong>${escapeHtml(actor.name)}</strong>
+              <span>HP ${hp.value}/${hp.max} | SAN ${san.value} (BP ${san.bp}) | WP ${wp.value}/${wp.max}</span>
+            </div>
+            <input type="number" class="koruja-order-input" name="order_${actor.id}" value="${order}" min="1" max="6" placeholder="#">
+          </label>
+          <div class="koruja-slot-subconfig">
+            <select name="slotMode_${actor.id}" class="koruja-slot-mode" data-actor-id="${actor.id}">
+              <option value="transparent" ${slotMode === "transparent" ? "selected" : ""}>${t("KORUJA_DG.Config.SlotModeTransparent")}</option>
+              <option value="portrait" ${slotMode === "portrait" ? "selected" : ""}>${t("KORUJA_DG.Config.SlotModePortrait")}</option>
+              <option value="iframe" ${slotMode === "iframe" ? "selected" : ""}>${t("KORUJA_DG.Config.SlotModeIframe")}</option>
+            </select>
+            <div class="koruja-slot-url-row" style="${slotMode === "iframe" ? "" : "display:none;"}">
+              <input type="text" name="slotUrl_${actor.id}" class="koruja-slot-url-input" value="${escapeHtml(slotUrl)}" placeholder="${t("KORUJA_DG.Config.SlotUrlPlaceholder")}">
+              <button type="button" class="koruja-vdo-gen-btn" data-actor-id="${actor.id}" title="${t("KORUJA_DG.Config.VdoGenTitle")}">
+                <i class="fa-solid fa-video"></i> ${t("KORUJA_DG.Config.VdoGenBtn")}
+              </button>
+            </div>
           </div>
-          <input type="number" class="koruja-order-input" name="order_${actor.id}" value="${order}" min="1" max="6" placeholder="#">
-        </label>
+        </div>
       `;
     }).join("");
 
@@ -254,6 +323,11 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
       return `<option value="${st}" ${sel}>${t(`KORUJA_DG.Status.${st}`)}</option>`;
     }).join("");
 
+    const defconOptions = ["1", "2", "3", "4", "5"].map(lvl => {
+      const sel = String(context.defconLevel) === lvl ? "selected" : "";
+      return `<option value="${lvl}" ${sel}>${t(`KORUJA_DG.Defcon.D${lvl}`)}</option>`;
+    }).join("");
+
     const streamUrl = `${window.location.origin}/?streamhud=1`;
     const pos = context.positions;
     const SCALE = 800 / 1920;
@@ -262,6 +336,10 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
       <div class="koruja-editor-grid">
         <div class="koruja-editor-sidebar">
           <div class="koruja-section-title"><i class="fa-solid fa-user-secret"></i> ${t("KORUJA_DG.Config.AgentsTitle")}</div>
+          <div class="koruja-vdo-room-row">
+            <label for="koruja-vdo-room">${t("KORUJA_DG.Config.VdoRoomLabel")}</label>
+            <input type="text" name="vdoRoomName" id="koruja-vdo-room" value="${escapeHtml(context.vdoRoomName)}" placeholder="${t("KORUJA_DG.Config.VdoRoomPlaceholder")}">
+          </div>
           <div class="koruja-config-list">
             ${agentRows || `<p class='notes'>${t("KORUJA_DG.Config.NoAgents")}</p>`}
           </div>
@@ -286,6 +364,14 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
             <select name="agencyStatus">${statusOptions}</select>
           </div>
           <div class="form-group stacked">
+            <label>${t("KORUJA_DG.Config.DefconLabel")}</label>
+            <select name="defconLevel">${defconOptions}</select>
+          </div>
+          <div class="form-group stacked">
+            <label>${t("KORUJA_DG.Config.SceneClassLabel")}</label>
+            <input type="text" name="sceneClassification" value="${escapeHtml(context.sceneClassification)}" placeholder="EYES ONLY // ACTIVE AO">
+          </div>
+          <div class="form-group stacked">
             <select name="overlayMode" id="koruja-overlay-mode-select">
               <option value="builtin-tactical" ${context.overlayMode === "builtin-tactical" ? "selected" : ""}>${t("KORUJA_DG.Config.ModeTactical")}</option>
               <option value="builtin-roleplay" ${context.overlayMode === "builtin-roleplay" ? "selected" : ""}>${t("KORUJA_DG.Config.ModeRoleplay")}</option>
@@ -305,6 +391,14 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
           <label class="koruja-check-row">
             <input type="checkbox" name="showOpClock" ${context.showOpClock ? "checked" : ""}>
             <span>${t("KORUJA_DG.Settings.ShowOpClock")}</span>
+          </label>
+          <label class="koruja-check-row">
+            <input type="checkbox" name="showSceneLowerThird" ${context.showSceneLowerThird ? "checked" : ""}>
+            <span>${t("KORUJA_DG.Config.ShowLowerThird")}</span>
+          </label>
+          <label class="koruja-check-row">
+            <input type="checkbox" name="showNowPlaying" ${context.showNowPlaying ? "checked" : ""}>
+            <span>${t("KORUJA_DG.Config.ShowNowPlaying")}</span>
           </label>
           <label class="koruja-check-row">
             <input type="checkbox" name="showChatFeed" ${context.showChatFeed ? "checked" : ""}>
@@ -341,6 +435,14 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
             </button>
             <button type="button" class="koruja-test-btn test-san" id="koruja-test-san">
               <i class="fa-solid fa-eye"></i> ${t("KORUJA_DG.Config.TestSanLoss")}
+            </button>
+          </div>
+          <div class="koruja-test-btn-row">
+            <button type="button" class="koruja-test-btn test-lt" id="koruja-test-lt">
+              <i class="fa-solid fa-location-dot"></i> ${t("KORUJA_DG.Config.TestLowerThird")}
+            </button>
+            <button type="button" class="koruja-test-btn test-bond" id="koruja-test-bond">
+              <i class="fa-solid fa-link-slash"></i> ${t("KORUJA_DG.Config.TestBondDegraded")}
             </button>
           </div>
         </div>
@@ -417,14 +519,15 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
       window.open(`${window.location.origin}/?streamhud=1`, "_blank", "width=1920,height=1080");
     });
 
-    const sendTestBanner = (type) => {
+    const sendTestBanner = (type, extra = {}) => {
       const selectedIds = game.settings.get(MODULE_ID, "partyActorIds") || [];
       const firstActor = selectedIds.length ? game.actors.get(selectedIds[0]) : game.actors.find(a => a.type === "agent");
       const payload = {
         action: "test-epic-banner",
         type,
         name: firstActor?.name || "Agent Vance",
-        img: firstActor?.img || ""
+        img: firstActor?.img || "",
+        ...extra
       };
       if (typeof BroadcastChannel !== "undefined") {
         const ch = new BroadcastChannel(MODULE_ID);
@@ -438,6 +541,40 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
     container.querySelector("#koruja-test-fumble")?.addEventListener("click", () => sendTestBanner("fumble"));
     container.querySelector("#koruja-test-bp")?.addEventListener("click", () => sendTestBanner("breaking-point"));
     container.querySelector("#koruja-test-san")?.addEventListener("click", () => sendTestBanner("san-loss"));
+    container.querySelector("#koruja-test-bond")?.addEventListener("click", () => sendTestBanner("bond-degraded", { detail: "Spouse: 10 → 8" }));
+    container.querySelector("#koruja-test-lt")?.addEventListener("click", () => {
+      const sceneName = game.scenes?.active?.name || "CASA JUNO — PORÃO";
+      if (typeof BroadcastChannel !== "undefined") {
+        const ch = new BroadcastChannel(MODULE_ID);
+        ch.postMessage({ action: "test-lower-third", sceneName });
+        ch.close();
+      }
+      ui.notifications.info(`Test lower-third (${sceneName}) sent to OBS tab.`);
+    });
+
+    const vdoRoomInput = container.querySelector("#koruja-vdo-room");
+    container.querySelectorAll(".koruja-slot-mode").forEach(sel => {
+      sel.addEventListener("change", () => {
+        const card = sel.closest(".koruja-config-card");
+        const urlRow = card?.querySelector(".koruja-slot-url-row");
+        if (urlRow) urlRow.style.display = sel.value === "iframe" ? "" : "none";
+      });
+    });
+
+    container.querySelectorAll(".koruja-vdo-gen-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const actorId = btn.dataset.actorId;
+        const actor = game.actors.get(actorId);
+        if (!actor) return;
+        const room = vdoRoomInput?.value?.trim() || "DeltaGreenOp";
+        const { pushUrl, viewUrl } = buildVdoLinks(room, actor);
+        const card = btn.closest(".koruja-config-card");
+        const urlInput = card?.querySelector(".koruja-slot-url-input");
+        if (urlInput) urlInput.value = viewUrl;
+        navigator.clipboard?.writeText(pushUrl).catch(() => {});
+        ui.notifications.info(t("KORUJA_DG.Config.VdoCopiedNotice", { name: actor.name }));
+      });
+    });
 
     modeSelect?.addEventListener("change", () => {
       const val = modeSelect.value;
@@ -527,6 +664,17 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
     selected.sort((a, b) => a.order - b.order);
     const orderedIds = selected.map(s => s.id);
 
+    const playerSlotConfigs = {};
+    for (const [key, val] of Object.entries(data)) {
+      if (key.startsWith("slotMode_")) {
+        const actorId = key.replace("slotMode_", "");
+        playerSlotConfigs[actorId] = {
+          mode: val || "transparent",
+          url: String(data[`slotUrl_${actorId}`] || "").trim()
+        };
+      }
+    }
+
     let parsedPositions = DEFAULT_POSITIONS;
     try {
       if (data.positionsJson) parsedPositions = JSON.parse(data.positionsJson);
@@ -535,9 +683,15 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
     }
 
     await game.settings.set(MODULE_ID, "partyActorIds", orderedIds);
+    await game.settings.set(MODULE_ID, "playerSlotConfigs", playerSlotConfigs);
+    await game.settings.set(MODULE_ID, "vdoRoomName", String(data.vdoRoomName || "DeltaGreenOp").trim());
     await game.settings.set(MODULE_ID, "bossActorId", data.bossActorId || "");
     await game.settings.set(MODULE_ID, "operationName", data.operationName || "");
     await game.settings.set(MODULE_ID, "agencyStatus", data.agencyStatus || "CLASSIFIED");
+    await game.settings.set(MODULE_ID, "defconLevel", data.defconLevel || "3");
+    await game.settings.set(MODULE_ID, "sceneClassification", data.sceneClassification || "EYES ONLY // ACTIVE AO");
+    await game.settings.set(MODULE_ID, "showSceneLowerThird", Boolean(data.showSceneLowerThird));
+    await game.settings.set(MODULE_ID, "showNowPlaying", Boolean(data.showNowPlaying));
     await game.settings.set(MODULE_ID, "showOpClock", Boolean(data.showOpClock));
     await game.settings.set(MODULE_ID, "overlayMode", data.overlayMode || "builtin-tactical");
     await game.settings.set(MODULE_ID, "customOverlayImg", data.customOverlayImg || "");
@@ -557,11 +711,16 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
  */
 class KorujaStreamHUD {
   static container = null;
+  static mediaLayer = null;
+  static lastMediaSig = "";
   static statCache = new Map();
+  static bondCache = new Map();
   static rollTimers = new Map();
   static chatHistory = [];
   static epicBannerEl = null;
   static epicBannerTimer = null;
+  static lowerThirdEl = null;
+  static lowerThirdTimer = null;
   static spotlightEl = null;
   static spotlightTimer = null;
   static broadcastChannel = null;
@@ -580,6 +739,12 @@ class KorujaStreamHUD {
       document.body.classList.remove("koruja-stream-mode-active");
     }
 
+    if (!this.mediaLayer) {
+      this.mediaLayer = document.createElement("div");
+      this.mediaLayer.id = "koruja-media-layer";
+      document.body.appendChild(this.mediaLayer);
+    }
+
     if (!this.container) {
       this.container = document.createElement("div");
       this.container.id = "koruja-stream-hud";
@@ -590,7 +755,13 @@ class KorujaStreamHUD {
       this.broadcastChannel = new BroadcastChannel(MODULE_ID);
       this.broadcastChannel.onmessage = (ev) => {
         if (ev.data?.action === "test-epic-banner") {
-          this.showEpicBanner(ev.data.type, { name: ev.data.name, img: ev.data.img });
+          this.showEpicBanner(ev.data.type, {
+            name: ev.data.name,
+            img: ev.data.img,
+            detail: ev.data.detail || ""
+          });
+        } else if (ev.data?.action === "test-lower-third") {
+          this.showSceneLowerThird(ev.data.sceneName);
         }
       };
     }
@@ -602,6 +773,7 @@ class KorujaStreamHUD {
       }, 1000);
     }
 
+    this.seedBondCache();
     this.loadRecentMessages();
     this.render();
   }
@@ -613,21 +785,123 @@ class KorujaStreamHUD {
   static destroy() {
     document.body.classList.remove("koruja-stream-mode-active", "koruja-stream-roleplay-mode");
     if (this.epicBannerTimer) clearTimeout(this.epicBannerTimer);
+    if (this.lowerThirdTimer) clearTimeout(this.lowerThirdTimer);
     if (this.spotlightTimer) clearTimeout(this.spotlightTimer);
     if (this.clockInterval) {
       clearInterval(this.clockInterval);
       this.clockInterval = null;
     }
     this.epicBannerEl = null;
+    this.lowerThirdEl = null;
     this.spotlightEl = null;
+    this.lastMediaSig = "";
     if (this.broadcastChannel) {
       this.broadcastChannel.close();
       this.broadcastChannel = null;
+    }
+    if (this.mediaLayer) {
+      this.mediaLayer.remove();
+      this.mediaLayer = null;
     }
     if (this.container) {
       this.container.remove();
       this.container = null;
     }
+  }
+
+  static seedBondCache() {
+    const actorIds = game.settings.get(MODULE_ID, "partyActorIds") || [];
+    for (const id of actorIds) {
+      const actor = game.actors.get(id);
+      if (!actor) continue;
+      for (const item of actor.items) {
+        if (item.type === "bond") {
+          this.bondCache.set(item.uuid, Number(item.system?.score) || 0);
+        }
+      }
+    }
+  }
+
+  static syncMediaLayer(actors, overlayMode, activeCombatantActorId) {
+    if (!this.mediaLayer) return;
+    if (overlayMode !== "builtin-tactical" && overlayMode !== "builtin-roleplay") {
+      if (this.lastMediaSig !== "") {
+        this.mediaLayer.innerHTML = "";
+        this.lastMediaSig = "";
+      }
+      return;
+    }
+
+    const slotConfigs = game.settings.get(MODULE_ID, "playerSlotConfigs") || {};
+    const prefix = overlayMode === "builtin-roleplay" ? "koruja-rp" : "koruja-cutout";
+    const sigPayload = {
+      overlayMode,
+      slots: actors.map((a, i) => {
+        const cfg = slotConfigs[a.id] || { mode: "transparent", url: "" };
+        return {
+          id: a.id,
+          img: a.img,
+          slot: i + 1,
+          mode: cfg.mode || "transparent",
+          url: cfg.url || ""
+        };
+      })
+    };
+    const nextSig = JSON.stringify(sigPayload);
+
+    if (nextSig !== this.lastMediaSig) {
+      this.lastMediaSig = nextSig;
+      this.mediaLayer.innerHTML = sigPayload.slots.map(s => {
+        const slotCls = `${prefix}-p${s.slot}`;
+        let inner = "";
+        if (s.mode === "portrait" && s.img) {
+          inner = `<div class="koruja-slot-portrait" style="background-image: url('${escapeHtml(s.img)}')"></div>`;
+        } else if (s.mode === "iframe" && s.url) {
+          inner = `<iframe class="koruja-slot-iframe" src="${escapeHtml(s.url)}" allow="autoplay; camera; microphone" frameborder="0"></iframe>`;
+        }
+        return `<div class="koruja-media-slot ${slotCls}" data-actor-id="${s.id}">${inner}</div>`;
+      }).join("");
+    }
+
+    this.mediaLayer.querySelectorAll(".koruja-media-slot").forEach(el => {
+      el.classList.toggle("is-turn", el.dataset.actorId === activeCombatantActorId);
+    });
+  }
+
+  static showSceneLowerThird(sceneName) {
+    if (!this.shouldRender() || !this.container) return;
+    if (!game.settings.get(MODULE_ID, "showSceneLowerThird")) return;
+    const name = String(sceneName || game.scenes?.active?.name || "").trim();
+    if (!name) return;
+
+    if (this.lowerThirdTimer) clearTimeout(this.lowerThirdTimer);
+    if (this.lowerThirdEl) this.lowerThirdEl.remove();
+
+    const classification = game.settings.get(MODULE_ID, "sceneClassification") || "EYES ONLY // ACTIVE AO";
+    const el = document.createElement("div");
+    el.id = "dg-lower-third";
+    el.className = "dg-lower-third";
+    el.innerHTML = `
+      <div class="dg-lt-classification">${escapeHtml(classification.toUpperCase())}</div>
+      <div class="dg-lt-scene">${escapeHtml(name.toUpperCase())}</div>
+      <div class="dg-lt-timestamp">${formatLowerThirdTimestamp()}</div>
+    `;
+
+    this.lowerThirdEl = el;
+    this.container.appendChild(el);
+
+    this.lowerThirdTimer = setTimeout(() => {
+      if (this.lowerThirdEl === el) {
+        el.classList.add("closing");
+        setTimeout(() => {
+          if (this.lowerThirdEl === el) {
+            el.remove();
+            this.lowerThirdEl = null;
+          }
+        }, 450);
+      }
+      this.lowerThirdTimer = null;
+    }, 7000);
   }
 
   static loadRecentMessages() {
@@ -705,7 +979,10 @@ class KorujaStreamHUD {
     const operationName = (game.settings.get(MODULE_ID, "operationName") || game.scenes?.active?.name || "DELTA GREEN").trim();
     const agencyStatus = game.settings.get(MODULE_ID, "agencyStatus") || "CLASSIFIED";
     const statusClass = `status-${agencyStatus.toLowerCase().replace("_", "-")}`;
+    const defconLevel = String(game.settings.get(MODULE_ID, "defconLevel") || "3");
     const showOpClock = game.settings.get(MODULE_ID, "showOpClock");
+    const showNowPlaying = game.settings.get(MODULE_ID, "showNowPlaying");
+    const activeTrack = showNowPlaying ? getActivePlaylistTrack() : null;
 
     const pos = isRoleplayMode
       ? foundry.utils.deepClone(ROLEPLAY_POSITIONS)
@@ -719,14 +996,25 @@ class KorujaStreamHUD {
     const activeCombatant = game.combat?.started ? game.combat.combatant : null;
     const activeCombatantActorId = activeCombatant?.actor?.id || null;
 
+    this.syncMediaLayer(actors, overlayMode, activeCombatantActorId);
+
+    const nowPlayingHtml = activeTrack ? `
+      <span class="dg-now-playing" title="${escapeHtml(activeTrack.playlist)}">
+        <span class="dg-eq-bars"><span class="dg-eq-bar"></span><span class="dg-eq-bar"></span><span class="dg-eq-bar"></span></span>
+        <span class="dg-np-track">${t("KORUJA_DG.HUD.NowPlayingPrefix")} ${escapeHtml(activeTrack.track)}</span>
+      </span>
+    ` : "";
+
     const topBarHtml = `
       <div class="koruja-top-bar">
         <div class="top-left">
           <img src="modules/${MODULE_ID}/assets/crest.png" onerror="this.style.display='none'">
           <span>${escapeHtml(operationName.toUpperCase())}${isRoleplayMode ? ` — ${t("KORUJA_DG.HUD.RoleplayTag")}` : ""}</span>
           <span class="dg-status-tag ${statusClass}">${t(`KORUJA_DG.Status.${agencyStatus}`)}</span>
+          ${nowPlayingHtml}
         </div>
         <div class="top-right">
+          <span class="dg-defcon-pill defcon-${escapeHtml(defconLevel)}">${t(`KORUJA_DG.Defcon.D${defconLevel}`)}</span>
           ${showOpClock ? `<span class="dg-op-clock">${formatTacticalClock()}</span>` : ""}
           <span class="dg-rec-badge"><span class="live-dot"></span> ${t("KORUJA_DG.HUD.LiveRec")}</span>
         </div>
@@ -938,6 +1226,7 @@ class KorujaStreamHUD {
         <div class="koruja-player-card ${stateClasses}"
              style="left: ${coords.x}px; top: ${coords.y}px;" data-actor-id="${actor.id}">
           <div class="koruja-roll-toast" id="koruja-roll-${actor.id}"></div>
+          ${isDown ? `<div class="dg-kia-stamp">${t("KORUJA_DG.Card.KiaStamp")}</div>` : ""}
           <div class="koruja-card-inner">
             <div class="koruja-portrait-wrap">
               <img class="koruja-portrait ${isBloodied ? "bloodied" : ""}" src="${escapeHtml(actor.img)}" alt="${escapeHtml(actor.name)}">
@@ -994,10 +1283,11 @@ class KorujaStreamHUD {
 
     this.container.innerHTML = `${backdropHtml}${bossHtml}${cardsHtml}${chatHtml}${combatHtml}`;
     if (this.epicBannerEl) this.container.appendChild(this.epicBannerEl);
+    if (this.lowerThirdEl) this.container.appendChild(this.lowerThirdEl);
     if (this.spotlightEl) this.container.appendChild(this.spotlightEl);
   }
 
-  static showEpicBanner(type, { name = "Agent", img = "" } = {}) {
+  static showEpicBanner(type, { name = "Agent", img = "", detail = "" } = {}) {
     if (!this.shouldRender() || !this.container) return;
 
     if (this.epicBannerTimer) clearTimeout(this.epicBannerTimer);
@@ -1009,7 +1299,8 @@ class KorujaStreamHUD {
       "breaking-point": { cls: "epic-breaking-point", title: t("KORUJA_DG.Alerts.BreakingPointTitle") },
       "san-loss": { cls: "epic-san-loss", title: t("KORUJA_DG.Alerts.SanLossTitle") },
       "critical-wound": { cls: "epic-critical-wound", title: t("KORUJA_DG.Alerts.CriticalWoundTitle") },
-      "lethality": { cls: "epic-lethality", title: t("KORUJA_DG.Alerts.LethalityTitle") }
+      "lethality": { cls: "epic-lethality", title: t("KORUJA_DG.Alerts.LethalityTitle") },
+      "bond-degraded": { cls: "epic-bond-degraded", title: t("KORUJA_DG.Alerts.BondDegradedTitle") }
     };
 
     const cfg = bannerMap[type] || bannerMap.crit;
@@ -1020,6 +1311,7 @@ class KorujaStreamHUD {
       <div class="epic-content">
         <div class="epic-actor">${escapeHtml(name)}</div>
         <div class="epic-title">${cfg.title}</div>
+        ${detail ? `<div class="epic-detail">${escapeHtml(detail)}</div>` : ""}
       </div>
     `;
 
@@ -1105,13 +1397,56 @@ class KorujaStreamHUD {
  * ========================================================= */
 
 Hooks.once("init", () => {
-  game.settings.register(MODULE_ID, "partyActorIds", { scope: "world", config: false, type: Array, default: [], onChange: () => KorujaStreamHUD.render() });
+  game.settings.register(MODULE_ID, "partyActorIds", { scope: "world", config: false, type: Array, default: [], onChange: () => { KorujaStreamHUD.seedBondCache(); KorujaStreamHUD.render(); } });
+  game.settings.register(MODULE_ID, "playerSlotConfigs", { scope: "world", config: false, type: Object, default: {}, onChange: () => KorujaStreamHUD.render() });
+  game.settings.register(MODULE_ID, "vdoRoomName", { scope: "world", config: false, type: String, default: "DeltaGreenOp" });
   game.settings.register(MODULE_ID, "bossActorId", { scope: "world", config: false, type: String, default: "", onChange: () => KorujaStreamHUD.render() });
   game.settings.register(MODULE_ID, "overlayMode", { scope: "world", config: false, type: String, default: "builtin-tactical", onChange: () => KorujaStreamHUD.render() });
   game.settings.register(MODULE_ID, "customOverlayImg", { scope: "world", config: false, type: String, default: "", onChange: () => KorujaStreamHUD.render() });
   game.settings.register(MODULE_ID, "showChatFeed", { scope: "world", config: false, type: Boolean, default: true, onChange: () => KorujaStreamHUD.render() });
   game.settings.register(MODULE_ID, "showCombatBox", { scope: "world", config: false, type: Boolean, default: true, onChange: () => KorujaStreamHUD.render() });
   game.settings.register(MODULE_ID, "cardPositions", { scope: "world", config: false, type: Object, default: DEFAULT_POSITIONS, onChange: () => KorujaStreamHUD.render() });
+
+  game.settings.register(MODULE_ID, "defconLevel", {
+    name: "KORUJA_DG.Settings.DefconLevel",
+    scope: "world",
+    config: true,
+    type: String,
+    choices: {
+      "1": "KORUJA_DG.Defcon.D1",
+      "2": "KORUJA_DG.Defcon.D2",
+      "3": "KORUJA_DG.Defcon.D3",
+      "4": "KORUJA_DG.Defcon.D4",
+      "5": "KORUJA_DG.Defcon.D5"
+    },
+    default: "3",
+    onChange: () => KorujaStreamHUD.render()
+  });
+
+  game.settings.register(MODULE_ID, "showSceneLowerThird", {
+    name: "KORUJA_DG.Settings.ShowSceneLowerThird",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: true
+  });
+
+  game.settings.register(MODULE_ID, "sceneClassification", {
+    name: "KORUJA_DG.Settings.SceneClassification",
+    scope: "world",
+    config: true,
+    type: String,
+    default: "EYES ONLY // ACTIVE AO"
+  });
+
+  game.settings.register(MODULE_ID, "showNowPlaying", {
+    name: "KORUJA_DG.Settings.ShowNowPlaying",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: true,
+    onChange: () => KorujaStreamHUD.render()
+  });
 
   game.settings.register(MODULE_ID, "operationName", {
     name: "KORUJA_DG.Settings.OperationName",
@@ -1188,7 +1523,9 @@ Hooks.once("init", () => {
     refresh: () => KorujaStreamHUD.render(),
     setBoss: (actorId) => game.settings.set(MODULE_ID, "bossActorId", actorId || ""),
     setMode: (mode) => game.settings.set(MODULE_ID, "overlayMode", mode || "builtin-tactical"),
-    setStatus: (status) => game.settings.set(MODULE_ID, "agencyStatus", status || "CLASSIFIED")
+    setStatus: (status) => game.settings.set(MODULE_ID, "agencyStatus", status || "CLASSIFIED"),
+    setDefcon: (level) => game.settings.set(MODULE_ID, "defconLevel", String(level || "3")),
+    triggerLowerThird: (sceneName) => KorujaStreamHUD.showSceneLowerThird(sceneName)
   };
 });
 
@@ -1197,6 +1534,7 @@ Hooks.once("ready", () => KorujaStreamHUD.init());
 Hooks.on("canvasReady", () => {
   if (!KorujaStreamHUD.shouldRender()) return;
   KorujaStreamHUD.render();
+  KorujaStreamHUD.showSceneLowerThird(game.scenes?.active?.name);
   setTimeout(() => window.dispatchEvent(new Event("resize")), 250);
 });
 
@@ -1325,6 +1663,33 @@ Hooks.on("updateCombat", (combat, changed) => {
     y: token.center.y,
     duration: 1000
   });
+});
+
+Hooks.on("updateItem", (item, changed) => {
+  if (item.type !== "bond" || item.parent?.documentName !== "Actor") return;
+  const partyActorIds = game.settings.get(MODULE_ID, "partyActorIds") || [];
+  if (!partyActorIds.includes(item.parent.id)) return;
+  if (changed?.system?.score === undefined) return;
+
+  const newScore = Number(item.system?.score) || 0;
+  const oldScore = KorujaStreamHUD.bondCache.get(item.uuid);
+  KorujaStreamHUD.bondCache.set(item.uuid, newScore);
+
+  if (oldScore !== undefined && newScore < oldScore) {
+    KorujaStreamHUD.showEpicBanner("bond-degraded", {
+      name: item.parent.name,
+      img: item.parent.img,
+      detail: `${item.name}: ${oldScore} → ${newScore}`
+    });
+  }
+});
+
+Hooks.on("updatePlaylistSound", () => {
+  if (KorujaStreamHUD.shouldRender()) KorujaStreamHUD.render();
+});
+
+Hooks.on("updatePlaylist", () => {
+  if (KorujaStreamHUD.shouldRender()) KorujaStreamHUD.render();
 });
 
 Hooks.on("deleteCombat", () => KorujaStreamHUD.render());

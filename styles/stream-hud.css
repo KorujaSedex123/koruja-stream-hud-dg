@@ -1435,3 +1435,323 @@ body.koruja-stream-roleplay-mode #board {
 }
 
 .koruja-stream-btn { margin-top: 4px; }
+
+
+/* =========================================================
+ * 5. PERSISTENT MEDIA LAYER (VDO.NINJA IFRAME & PORTRAIT)
+ * ========================================================= */
+
+#koruja-media-layer {
+  position: fixed;
+  inset: 0;
+  width: 1920px;
+  height: 1080px;
+  pointer-events: none;
+  z-index: 99990;
+}
+
+.koruja-media-slot {
+  position: absolute;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #070a0d;
+  transition: box-shadow 0.3s ease;
+}
+
+.koruja-media-slot.is-turn .koruja-slot-portrait {
+  transform: scale(1.06);
+  filter: brightness(1.12);
+}
+
+.koruja-slot-portrait {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center 20%;
+  transition: transform 0.5s ease, filter 0.4s ease;
+  filter: brightness(0.86);
+}
+
+.koruja-slot-iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+
+/* Per-agent slot subconfig in GM Visual Editor */
+.koruja-config-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(52, 211, 153, 0.16);
+  border-radius: 4px;
+}
+
+.koruja-vdo-room-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.koruja-vdo-room-row input {
+  flex: 1;
+  height: 24px;
+  font-size: 11px;
+  font-family: var(--dg-font-mono);
+}
+
+.koruja-slot-subconfig {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 22px;
+}
+
+.koruja-slot-mode {
+  height: 24px;
+  font-size: 11px;
+}
+
+.koruja-slot-url-row {
+  display: flex;
+  gap: 4px;
+}
+
+.koruja-slot-url-input {
+  flex: 1;
+  height: 24px;
+  font-size: 11px;
+  font-family: var(--dg-font-mono);
+}
+
+.koruja-vdo-gen-btn {
+  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 8px;
+  font-family: var(--dg-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  background: rgba(52, 211, 153, 0.18);
+  border: 1px solid #059669;
+  color: #6ee7b7;
+  border-radius: 3px;
+}
+
+.koruja-vdo-gen-btn:hover {
+  background: rgba(52, 211, 153, 0.34);
+}
+
+/* =========================================================
+ * 6. DELTA GREEN STREAM ENTERTAINMENT FEATURES
+ * ========================================================= */
+
+/* DEFCON / Threat Level Indicator */
+.dg-defcon-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 2px;
+  font-family: var(--dg-font-mono);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+}
+
+.dg-defcon-pill.defcon-1 {
+  color: #fecaca;
+  background: rgba(153, 27, 27, 0.72);
+  border-color: #ef4444;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.65);
+  animation: dgCodeRedPulse 1s ease-in-out infinite;
+}
+
+.dg-defcon-pill.defcon-2 {
+  color: #fed7aa;
+  background: rgba(154, 52, 18, 0.55);
+  border-color: #fb923c;
+}
+
+.dg-defcon-pill.defcon-3 {
+  color: #fde68a;
+  background: rgba(120, 53, 15, 0.45);
+  border-color: #f59e0b;
+}
+
+.dg-defcon-pill.defcon-4 {
+  color: #a5f3fc;
+  background: rgba(14, 116, 144, 0.4);
+  border-color: #22d3ee;
+}
+
+.dg-defcon-pill.defcon-5 {
+  color: #a7f3d0;
+  background: rgba(6, 78, 59, 0.45);
+  border-color: #34d399;
+}
+
+/* Now Playing Ticker */
+.dg-now-playing {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 280px;
+  padding: 2px 10px;
+  background: rgba(10, 16, 22, 0.78);
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  border-radius: 2px;
+  font-family: var(--dg-font-mono);
+  font-size: 10.5px;
+  color: #bae6fd;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.dg-np-track {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dg-eq-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 11px;
+  flex-shrink: 0;
+}
+
+@keyframes dgEqBounce {
+  0%, 100% { height: 3px; }
+  50% { height: 11px; }
+}
+
+.dg-eq-bar {
+  width: 2px;
+  background: #22d3ee;
+  border-radius: 1px;
+  animation: dgEqBounce 0.8s ease-in-out infinite;
+}
+
+.dg-eq-bar:nth-child(2) { animation-delay: 0.2s; }
+.dg-eq-bar:nth-child(3) { animation-delay: 0.4s; }
+
+/* Scene / Location Lower-Third */
+@keyframes dgLowerThirdIn {
+  0% { opacity: 0; transform: translateX(-32px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes dgLowerThirdOut {
+  0% { opacity: 1; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(-24px); filter: brightness(1.4); }
+}
+
+.dg-lower-third {
+  position: absolute;
+  top: 715px;
+  left: 38px;
+  min-width: 360px;
+  max-width: 680px;
+  padding: 10px 20px 10px 16px;
+  background: linear-gradient(90deg, rgba(6, 10, 14, 0.94) 0%, rgba(10, 16, 22, 0.84) 80%, rgba(10, 16, 22, 0.25) 100%);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  border-left: 4px solid var(--dg-phosphor);
+  border-radius: 2px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.85);
+  font-family: var(--dg-font-mono);
+  z-index: 210;
+  pointer-events: none;
+  animation: dgLowerThirdIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.dg-lower-third.closing,
+.dg-lower-third.is-exiting {
+  animation: dgLowerThirdOut 0.45s ease-in forwards;
+}
+
+.dg-lt-classification {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+  color: var(--dg-amber);
+  margin-bottom: 3px;
+}
+
+.dg-lt-scene {
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #f8fafc;
+  text-shadow: 0 0 12px rgba(52, 211, 153, 0.45);
+  line-height: 1.15;
+}
+
+.dg-lt-timestamp {
+  margin-top: 4px;
+  font-size: 10.5px;
+  letter-spacing: 1.5px;
+  color: var(--dg-phosphor);
+  opacity: 0.88;
+}
+
+/* KIA / FILE SEALED Stamp on Player Card (HP === 0) */
+.dg-kia-stamp {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-10deg);
+  padding: 3px 10px;
+  background: rgba(69, 10, 10, 0.82);
+  border: 2px solid rgba(239, 68, 68, 0.92);
+  border-radius: 2px;
+  font-family: var(--dg-font-mono);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #fecaca;
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.9);
+  box-shadow: 0 0 14px rgba(0, 0, 0, 0.85), inset 0 0 8px rgba(239, 68, 68, 0.35);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 6;
+}
+
+/* Bond Degradation Epic Banner */
+.koruja-epic-banner.epic-bond-degraded {
+  background: linear-gradient(135deg, rgba(58, 22, 10, 0.96) 0%, rgba(16, 8, 10, 0.98) 100%);
+  border: 2px solid #f59e0b;
+  color: #fef3c7;
+  box-shadow: 0 0 40px rgba(245, 158, 11, 0.72), inset 0 0 24px rgba(220, 38, 38, 0.28);
+  animation: dgBannerGlitch 0.65s ease-out forwards;
+}
+
+.koruja-epic-banner.epic-bond-degraded img {
+  border: 2px solid #f59e0b;
+  filter: saturate(0.75) contrast(1.15);
+}
+
+.koruja-epic-banner.epic-bond-degraded .epic-title,
+.koruja-epic-banner.epic-bond-degraded .epic-text {
+  color: #fbbf24;
+  text-shadow: 0 0 14px rgba(245, 158, 11, 0.85);
+}
+
+.koruja-epic-banner .epic-detail {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: #fde68a;
+  opacity: 0.95;
+}

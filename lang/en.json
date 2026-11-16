@@ -15,6 +15,10 @@
       "OperationName": "Operation Codename",
       "AgencyStatus": "Agency Tactical Status",
       "ShowOpClock": "Show Bodycam Clock / Timestamp",
+      "ShowSceneLowerThird": "Show Scene / Location Lower-Third",
+      "SceneClassification": "Scene Lower-Third Classification",
+      "ShowNowPlaying": "Show Now Playing Music Ticker",
+      "DefconLevel": "DEFCON Threat Level",
       "ConfigMenuName": "Stream HUD Configuration (Delta Green)",
       "ConfigMenuLabel": "Open Stream HUD DG Configurator",
       "ConfigMenuHint": "Select agents, arrange cards on the 1920x1080 stage, and trigger test alerts."
@@ -49,7 +53,32 @@
       "SaveButton": "Save Configuration",
       "SavedNotice": "Delta Green Stream HUD updated successfully.",
       "OpNameLabel": "Operation Codename",
-      "AgencyStatusLabel": "Status Tag"
+      "AgencyStatusLabel": "Status Tag",
+      "VdoRoomLabel": "VDO.Ninja Room",
+      "VdoRoomPlaceholder": "DeltaGreenOp",
+      "SlotModeTransparent": "Transparent (Default)",
+      "SlotModePortrait": "Agent Portrait",
+      "SlotModeIframe": "Webcam / Iframe (VDO.Ninja)",
+      "SlotUrlPlaceholder": "VDO.Ninja view URL or embed link...",
+      "VdoGenBtn": "VDO",
+      "VdoGenTitle": "Generate VDO.Ninja link (copies Push URL for player)",
+      "VdoCopiedNotice": "Camera push link for {name} copied! Send it to the player.",
+      "DefconLabel": "DEFCON Level",
+      "SceneClassLabel": "Scene Classification",
+      "ShowLowerThird": "Show Lower-Third on Scene Change",
+      "ShowNowPlaying": "Show Now Playing Ticker",
+      "TestLowerThird": "Test Lower-Third",
+      "TestBondDegraded": "Test Bond Degradation"
+    },
+    "Defcon": {
+      "D1": "DEFCON 1 — MAXIMUM THREAT",
+      "D2": "DEFCON 2 — CRITICAL ALERT",
+      "D3": "DEFCON 3 — ELEVATED READINESS",
+      "D4": "DEFCON 4 — ACTIVE WATCH",
+      "D5": "DEFCON 5 — NORMAL"
+    },
+    "Card": {
+      "KiaStamp": "KIA // FILE SEALED"
     },
     "Status": {
       "CLASSIFIED": "CLASSIFIED",
@@ -74,7 +103,8 @@
       "Round": "ROUND",
       "Exploration": "EXPLORATION",
       "OutOfCombat": "Out of Combat",
-      "TurnOf": "Turn:"
+      "TurnOf": "Turn:",
+      "NowPlayingPrefix": "NOW PLAYING:"
     },
     "Outcomes": {
       "CritSuccess": "CRITICAL SUCCESS",
@@ -90,7 +120,8 @@
       "BreakingPointTitle": "BREAKING POINT TRIGGERED",
       "SanLossTitle": "MAJOR SANITY LOSS",
       "CriticalWoundTitle": "CRITICAL WOUND / UNCONSCIOUS",
-      "LethalityTitle": "LETHALITY THRESHOLD TRIGGERED"
+      "LethalityTitle": "LETHALITY THRESHOLD TRIGGERED",
+      "BondDegradedTitle": "BOND DEGRADED"
     }
   }
 }
