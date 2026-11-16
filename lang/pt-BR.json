@@ -68,7 +68,15 @@
       "ShowLowerThird": "Exibir Lower-Third ao Trocar Cena",
       "ShowNowPlaying": "Exibir Música Tocando (Now Playing)",
       "TestLowerThird": "Testar Lower-Third",
-      "TestBondDegraded": "Testar Degradação de Vínculo"
+      "TestBondDegraded": "Testar Degradação de Vínculo",
+      "ThreatOverlayLabel": "Modo de Ameaça no Overlay",
+      "ThreatNormal": "Normal (Padrão)",
+      "ThreatStalker": "Perseguidor (Carmesim / Glitch)",
+      "ThreatBlind": "Ouvinte Cego (Sonar / Estática)"
+    },
+    "ThreatMode": {
+      "StalkerStrip": "CONTATO HOSTIL // PERSEGUIDOR DETECTADO",
+      "BlindStrip": "ANOMALIA ACÚSTICA // NÃO FAÇA BARULHO"
     },
     "Defcon": {
       "D1": "DEFCON 1 — AMEAÇA MÁXIMA",

@@ -224,6 +224,7 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
     const playerSlotConfigs = game.settings.get(MODULE_ID, "playerSlotConfigs") || {};
     const vdoRoomName = game.settings.get(MODULE_ID, "vdoRoomName") || "DeltaGreenOp";
     const defconLevel = game.settings.get(MODULE_ID, "defconLevel") || "3";
+    const threatOverlayMode = game.settings.get(MODULE_ID, "threatOverlayMode") || "normal";
     const sceneClassification = game.settings.get(MODULE_ID, "sceneClassification") || "EYES ONLY // ACTIVE AO";
     const showSceneLowerThird = game.settings.get(MODULE_ID, "showSceneLowerThird");
     const showNowPlaying = game.settings.get(MODULE_ID, "showNowPlaying");
@@ -259,6 +260,7 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
       playerSlotConfigs,
       vdoRoomName,
       defconLevel,
+      threatOverlayMode,
       sceneClassification,
       showSceneLowerThird,
       showNowPlaying,
@@ -366,6 +368,14 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
           <div class="form-group stacked">
             <label>${t("KORUJA_DG.Config.DefconLabel")}</label>
             <select name="defconLevel">${defconOptions}</select>
+          </div>
+          <div class="form-group stacked">
+            <label>${t("KORUJA_DG.Config.ThreatOverlayLabel")}</label>
+            <select name="threatOverlayMode" id="koruja-threat-overlay-select">
+              <option value="normal" ${context.threatOverlayMode === "normal" ? "selected" : ""}>${t("KORUJA_DG.Config.ThreatNormal")}</option>
+              <option value="stalker" ${context.threatOverlayMode === "stalker" ? "selected" : ""}>${t("KORUJA_DG.Config.ThreatStalker")}</option>
+              <option value="blind" ${context.threatOverlayMode === "blind" ? "selected" : ""}>${t("KORUJA_DG.Config.ThreatBlind")}</option>
+            </select>
           </div>
           <div class="form-group stacked">
             <label>${t("KORUJA_DG.Config.SceneClassLabel")}</label>
@@ -552,6 +562,10 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
       ui.notifications.info(`Test lower-third (${sceneName}) sent to OBS tab.`);
     });
 
+    container.querySelector("#koruja-threat-overlay-select")?.addEventListener("change", (ev) => {
+      game.korujaStreamHudDG?.setThreatOverlay(ev.target.value);
+    });
+
     const vdoRoomInput = container.querySelector("#koruja-vdo-room");
     container.querySelectorAll(".koruja-slot-mode").forEach(sel => {
       sel.addEventListener("change", () => {
@@ -689,6 +703,7 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
     await game.settings.set(MODULE_ID, "operationName", data.operationName || "");
     await game.settings.set(MODULE_ID, "agencyStatus", data.agencyStatus || "CLASSIFIED");
     await game.settings.set(MODULE_ID, "defconLevel", data.defconLevel || "3");
+    await game.settings.set(MODULE_ID, "threatOverlayMode", data.threatOverlayMode || "normal");
     await game.settings.set(MODULE_ID, "sceneClassification", data.sceneClassification || "EYES ONLY // ACTIVE AO");
     await game.settings.set(MODULE_ID, "showSceneLowerThird", Boolean(data.showSceneLowerThird));
     await game.settings.set(MODULE_ID, "showNowPlaying", Boolean(data.showNowPlaying));
@@ -726,6 +741,7 @@ class KorujaStreamHUD {
   static broadcastChannel = null;
   static clockInterval = null;
   static lastBossHpPct = null;
+  static threatOverlayOverride = null;
 
   static init() {
     if (!this.shouldRender()) {
@@ -762,6 +778,9 @@ class KorujaStreamHUD {
           });
         } else if (ev.data?.action === "test-lower-third") {
           this.showSceneLowerThird(ev.data.sceneName);
+        } else if (ev.data?.action === "set-threat-overlay") {
+          this.threatOverlayOverride = ev.data.mode || "normal";
+          this.render();
         }
       };
     }
@@ -783,7 +802,7 @@ class KorujaStreamHUD {
   }
 
   static destroy() {
-    document.body.classList.remove("koruja-stream-mode-active", "koruja-stream-roleplay-mode");
+    document.body.classList.remove("koruja-stream-mode-active", "koruja-stream-roleplay-mode", "dg-threat-stalker", "dg-threat-blind");
     if (this.epicBannerTimer) clearTimeout(this.epicBannerTimer);
     if (this.lowerThirdTimer) clearTimeout(this.lowerThirdTimer);
     if (this.spotlightTimer) clearTimeout(this.spotlightTimer);
@@ -980,6 +999,17 @@ class KorujaStreamHUD {
     const agencyStatus = game.settings.get(MODULE_ID, "agencyStatus") || "CLASSIFIED";
     const statusClass = `status-${agencyStatus.toLowerCase().replace("_", "-")}`;
     const defconLevel = String(game.settings.get(MODULE_ID, "defconLevel") || "3");
+    const threatMode = this.threatOverlayOverride || game.settings.get(MODULE_ID, "threatOverlayMode") || "normal";
+    document.body.classList.toggle("dg-threat-stalker", threatMode === "stalker");
+    document.body.classList.toggle("dg-threat-blind", threatMode === "blind");
+
+    const threatOverlayHtml = (threatMode === "stalker" || threatMode === "blind") ? `
+      <div id="dg-threat-overlay" class="dg-threat-${threatMode}">
+        <div class="dg-threat-vignette"></div>
+        <div class="dg-threat-status-strip">${t(threatMode === "stalker" ? "KORUJA_DG.ThreatMode.StalkerStrip" : "KORUJA_DG.ThreatMode.BlindStrip")}</div>
+      </div>
+    ` : "";
+
     const showOpClock = game.settings.get(MODULE_ID, "showOpClock");
     const showNowPlaying = game.settings.get(MODULE_ID, "showNowPlaying");
     const activeTrack = showNowPlaying ? getActivePlaylistTrack() : null;
@@ -1281,7 +1311,7 @@ class KorujaStreamHUD {
       `;
     }
 
-    this.container.innerHTML = `${backdropHtml}${bossHtml}${cardsHtml}${chatHtml}${combatHtml}`;
+    this.container.innerHTML = `${backdropHtml}${threatOverlayHtml}${bossHtml}${cardsHtml}${chatHtml}${combatHtml}`;
     if (this.epicBannerEl) this.container.appendChild(this.epicBannerEl);
     if (this.lowerThirdEl) this.container.appendChild(this.lowerThirdEl);
     if (this.spotlightEl) this.container.appendChild(this.spotlightEl);
@@ -1423,6 +1453,17 @@ Hooks.once("init", () => {
     onChange: () => KorujaStreamHUD.render()
   });
 
+  game.settings.register(MODULE_ID, "threatOverlayMode", {
+    scope: "world",
+    config: false,
+    type: String,
+    default: "normal",
+    onChange: () => {
+      KorujaStreamHUD.threatOverlayOverride = null;
+      KorujaStreamHUD.render();
+    }
+  });
+
   game.settings.register(MODULE_ID, "showSceneLowerThird", {
     name: "KORUJA_DG.Settings.ShowSceneLowerThird",
     scope: "world",
@@ -1525,6 +1566,17 @@ Hooks.once("init", () => {
     setMode: (mode) => game.settings.set(MODULE_ID, "overlayMode", mode || "builtin-tactical"),
     setStatus: (status) => game.settings.set(MODULE_ID, "agencyStatus", status || "CLASSIFIED"),
     setDefcon: (level) => game.settings.set(MODULE_ID, "defconLevel", String(level || "3")),
+    setThreatOverlay: async (mode) => {
+      const normalized = ["normal", "stalker", "blind"].includes(mode) ? mode : "normal";
+      if (typeof BroadcastChannel !== "undefined") {
+        const ch = new BroadcastChannel(MODULE_ID);
+        ch.postMessage({ action: "set-threat-overlay", mode: normalized });
+        ch.close();
+      }
+      if (game.user?.isGM) {
+        await game.settings.set(MODULE_ID, "threatOverlayMode", normalized);
+      }
+    },
     triggerLowerThird: (sceneName) => KorujaStreamHUD.showSceneLowerThird(sceneName)
   };
 });

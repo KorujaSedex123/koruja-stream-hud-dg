@@ -68,7 +68,15 @@
       "ShowLowerThird": "Show Lower-Third on Scene Change",
       "ShowNowPlaying": "Show Now Playing Ticker",
       "TestLowerThird": "Test Lower-Third",
-      "TestBondDegraded": "Test Bond Degradation"
+      "TestBondDegraded": "Test Bond Degradation",
+      "ThreatOverlayLabel": "Overlay Threat Mode",
+      "ThreatNormal": "Normal (Default)",
+      "ThreatStalker": "Stalker (Crimson / Glitch)",
+      "ThreatBlind": "Blind Listener (Sonar / Static)"
+    },
+    "ThreatMode": {
+      "StalkerStrip": "HOSTILE CONTACT // STALKER DETECTED",
+      "BlindStrip": "ACOUSTIC ANOMALY // MAINTAIN SILENCE"
     },
     "Defcon": {
       "D1": "DEFCON 1 — MAXIMUM THREAT",
