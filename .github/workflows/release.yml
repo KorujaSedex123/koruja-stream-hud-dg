@@ -1,0 +1,70 @@
+name: Foundry VTT Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag da release (ex: v1.0.0). Deixe vazio para usar a versao do module.json"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve Release Tag & Update module.json
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            INPUT_TAG="${{ inputs.tag }}"
+            if [ -n "$INPUT_TAG" ]; then
+              TAG="$INPUT_TAG"
+            else
+              VERSION=$(jq -r '.version' module.json)
+              TAG="v${VERSION}"
+            fi
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+
+          VERSION="${TAG#v}"
+          REPO="${{ github.repository }}"
+
+          jq --arg v "$VERSION" \
+             --arg dl "https://github.com/${REPO}/releases/download/${TAG}/module.zip" \
+             --arg mf "https://github.com/${REPO}/releases/latest/download/module.json" \
+             --arg url "https://github.com/${REPO}" \
+             '.version = $v | .download = $dl | .manifest = $mf | .url = $url' \
+             module.json > module.tmp.json && mv module.tmp.json module.json
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Package module.zip
+        run: |
+          zip -r module.zip . \
+            -x ".git/*" \
+            -x ".github/*" \
+            -x ".gitignore" \
+            -x "module.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: Release ${{ steps.meta.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            module.json
+            module.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
