@@ -2115,3 +2115,81 @@ body.dg-threat-blind .dg-threat-status-strip {
 .dg-tape-eq .dg-eq-bar {
   background: #f59e0b;
 }
+
+/* --- PAUSE OVERLAY (ESPACO / BODYCAM STAND BY) --- */
+.dg-rec-badge.is-paused {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(245, 158, 11, 0.72);
+  color: #fcd34d;
+  animation: dgTapeBlink 1.3s infinite;
+}
+
+body.dg-game-paused #board {
+  filter: grayscale(45%) brightness(0.68) contrast(1.08);
+  transition: filter 0.35s ease;
+}
+
+.dg-pause-overlay {
+  position: fixed;
+  top: 56px;
+  left: 20px;
+  width: 1420px;
+  height: 798px;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(6, 10, 14, 0.32) 0px,
+    rgba(6, 10, 14, 0.32) 2px,
+    rgba(0, 0, 0, 0.5) 3px,
+    rgba(0, 0, 0, 0.5) 5px
+  );
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+
+body.koruja-stream-roleplay-mode .dg-pause-overlay {
+  inset: 0;
+  width: 1920px;
+  height: 1080px;
+}
+
+.dg-pause-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 40px;
+  background: rgba(8, 11, 15, 0.9);
+  border: 1px solid rgba(245, 158, 11, 0.75);
+  border-top: 3px solid #f59e0b;
+  border-bottom: 3px solid #f59e0b;
+  border-radius: 4px;
+  box-shadow: 0 12px 42px rgba(0, 0, 0, 0.85), 0 0 28px rgba(245, 158, 11, 0.22);
+  text-align: center;
+}
+
+.dg-pause-icon {
+  font-size: 26px;
+  color: #fbbf24;
+  animation: dgTapeBlink 1.3s infinite;
+}
+
+.dg-pause-title {
+  font-family: var(--dg-font-mono);
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: #fef3c7;
+  text-transform: uppercase;
+}
+
+.dg-pause-sub {
+  font-family: var(--dg-font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #94a3b8;
+  text-transform: uppercase;
+}

@@ -100,6 +100,9 @@
     },
     "HUD": {
       "LiveRec": "REC",
+      "PausedBadge": "PAUSE",
+      "PausedTitle": "FEED PAUSED // STAND BY",
+      "PausedSub": "AWAITING OPERATION RESUME",
       "ThreatActive": "ACTIVE THREAT",
       "RoleplayTag": "BODYCAM FEED // RP",
       "TurnBadge": "TURN",

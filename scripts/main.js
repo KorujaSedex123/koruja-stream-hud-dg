@@ -855,7 +855,7 @@ class KorujaStreamHUD {
   }
 
   static destroy() {
-    document.body.classList.remove("koruja-stream-mode-active", "koruja-stream-roleplay-mode", "dg-threat-stalker", "dg-threat-blind");
+    document.body.classList.remove("koruja-stream-mode-active", "koruja-stream-roleplay-mode", "dg-threat-stalker", "dg-threat-blind", "dg-game-paused");
     if (this.epicBannerTimer) clearTimeout(this.epicBannerTimer);
     if (this.lowerThirdTimer) clearTimeout(this.lowerThirdTimer);
     if (this.spotlightTimer) clearTimeout(this.spotlightTimer);
@@ -1053,8 +1053,10 @@ class KorujaStreamHUD {
     const statusClass = `status-${agencyStatus.toLowerCase().replace("_", "-")}`;
     const defconLevel = String(game.settings.get(MODULE_ID, "defconLevel") || "3");
     const threatMode = this.threatOverlayOverride || game.settings.get(MODULE_ID, "threatOverlayMode") || "normal";
+    const isPaused = Boolean(game.paused);
     document.body.classList.toggle("dg-threat-stalker", threatMode === "stalker");
     document.body.classList.toggle("dg-threat-blind", threatMode === "blind");
+    document.body.classList.toggle("dg-game-paused", isPaused);
 
     const threatOverlayHtml = (threatMode === "stalker" || threatMode === "blind") ? `
       <div id="dg-threat-overlay" class="dg-threat-${threatMode}">
@@ -1099,7 +1101,7 @@ class KorujaStreamHUD {
         <div class="top-right">
           <span class="dg-defcon-pill defcon-${escapeHtml(defconLevel)}">${t(`KORUJA_DG.Defcon.D${defconLevel}`)}</span>
           ${showOpClock ? `<span class="dg-op-clock">${formatTacticalClock()}</span>` : ""}
-          <span class="dg-rec-badge"><span class="live-dot"></span> ${t("KORUJA_DG.HUD.LiveRec")}</span>
+          <span class="dg-rec-badge ${isPaused ? "is-paused" : ""}">${isPaused ? `<i class="fa-solid fa-pause"></i> ${t("KORUJA_DG.HUD.PausedBadge")}` : `<span class="live-dot"></span> ${t("KORUJA_DG.HUD.LiveRec")}`}</span>
         </div>
       </div>
     `;
@@ -1404,7 +1406,17 @@ class KorujaStreamHUD {
       `;
     }
 
-    this.container.innerHTML = `${backdropHtml}${threatOverlayHtml}${tapeHtml}${bossHtml}${cardsHtml}${chatHtml}${combatHtml}`;
+    const pauseOverlayHtml = isPaused ? `
+      <div id="dg-pause-overlay" class="dg-pause-overlay">
+        <div class="dg-pause-card">
+          <div class="dg-pause-icon"><i class="fa-solid fa-pause"></i></div>
+          <div class="dg-pause-title">${t("KORUJA_DG.HUD.PausedTitle")}</div>
+          <div class="dg-pause-sub">${t("KORUJA_DG.HUD.PausedSub")}</div>
+        </div>
+      </div>
+    ` : "";
+
+    this.container.innerHTML = `${backdropHtml}${threatOverlayHtml}${pauseOverlayHtml}${tapeHtml}${bossHtml}${cardsHtml}${chatHtml}${combatHtml}`;
     if (this.epicBannerEl) this.container.appendChild(this.epicBannerEl);
     if (this.lowerThirdEl) this.container.appendChild(this.lowerThirdEl);
     if (this.spotlightEl) this.container.appendChild(this.spotlightEl);
@@ -1907,6 +1919,10 @@ Hooks.on("updatePlaylistSound", () => {
 });
 
 Hooks.on("updatePlaylist", () => {
+  if (KorujaStreamHUD.shouldRender()) KorujaStreamHUD.render();
+});
+
+Hooks.on("pauseGame", () => {
   if (KorujaStreamHUD.shouldRender()) KorujaStreamHUD.render();
 });
 
