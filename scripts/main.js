@@ -2273,6 +2273,7 @@ class KorujaPuzzleApp extends foundry.applications.api.ApplicationV2 {
 class KorujaPuzzleManager {
   static app = null;
   static currentState = { active: false };
+  static autoCloseTimer = null;
 
   static init() {
     this.currentState = game.settings.get(MODULE_ID, "activePuzzleState") || { active: false };
@@ -2314,6 +2315,10 @@ class KorujaPuzzleManager {
   }
 
   static async pushUpdate(state) {
+    if (this.autoCloseTimer && !state?.resultText) {
+      clearTimeout(this.autoCloseTimer);
+      this.autoCloseTimer = null;
+    }
     this.currentState = state;
     if (typeof BroadcastChannel !== "undefined") {
       const ch = new BroadcastChannel(MODULE_ID);
@@ -2371,9 +2376,11 @@ class KorujaPuzzleManager {
       if (game.user?.isGM) await ChatMessage.create({ content: msgHtml });
       else game.socket.emit(`module.${MODULE_ID}`, { action: "puzzle-chat", html: msgHtml });
     }
-    if (st.resultKind === "ok") {
-      setTimeout(() => this.closeAll(), 4500);
-    }
+    if (this.autoCloseTimer) clearTimeout(this.autoCloseTimer);
+    this.autoCloseTimer = setTimeout(() => {
+      this.autoCloseTimer = null;
+      this.closeAll();
+    }, 5000);
   }
 
   static async openSelector() {
