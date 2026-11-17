@@ -76,11 +76,14 @@
       "StalkerGifLabel": "GIF do Perseguidor (Monstro 1)",
       "BlindGifLabel": "GIF do Ouvinte Cego (Monstro 2)",
       "CaretakerGifLabel": "GIF do Caseiro Silas (Monstro 3)",
-      "GifPlaceholder": "Selecione o .gif do monstro no Foundry..."
+      "GifPlaceholder": "Selecione o .gif do monstro no Foundry...",
+      "LockCameraPositions": "Travar Posição das Câmeras (Tático = Roleplay)"
     },
     "ThreatMode": {
       "StalkerStrip": "CONTATO HOSTIL // PERSEGUIDOR DETECTADO",
-      "BlindStrip": "ANOMALIA ACÚSTICA // NÃO FAÇA BARULHO"
+      "BlindStrip": "ANOMALIA ACÚSTICA // NÃO FAÇA BARULHO",
+      "SubliminalBlind": "NÃO SE MEXA // SILÊNCIO",
+      "AudioSpike": "PICO DE ÁUDIO"
     },
     "Defcon": {
       "D1": "DEFCON 1 — AMEAÇA MÁXIMA",
@@ -106,6 +109,7 @@
     },
     "HUD": {
       "LiveRec": "REC",
+      "RecErr": "REC [ERR]",
       "PausedBadge": "PAUSE",
       "PausedTitle": "TRANSMISSÃO PAUSADA // STAND BY",
       "PausedSub": "AGUARDANDO RETOMADA DA OPERAÇÃO",

@@ -231,6 +231,7 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
     const sceneClassification = game.settings.get(MODULE_ID, "sceneClassification") || "EYES ONLY // ACTIVE AO";
     const showSceneLowerThird = game.settings.get(MODULE_ID, "showSceneLowerThird");
     const showNowPlaying = game.settings.get(MODULE_ID, "showNowPlaying");
+    const lockCameraPositions = game.settings.get(MODULE_ID, "lockCameraPositions");
     const savedPositions = game.settings.get(MODULE_ID, "cardPositions") || {};
 
     this.#draftPositions = foundry.utils.mergeObject(
@@ -270,6 +271,7 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
       sceneClassification,
       showSceneLowerThird,
       showNowPlaying,
+      lockCameraPositions,
       positions: this.#draftPositions
     };
   }
@@ -428,6 +430,10 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
           <label class="koruja-check-row">
             <input type="checkbox" name="showOpClock" ${context.showOpClock ? "checked" : ""}>
             <span>${t("KORUJA_DG.Settings.ShowOpClock")}</span>
+          </label>
+          <label class="koruja-check-row">
+            <input type="checkbox" name="lockCameraPositions" ${context.lockCameraPositions ? "checked" : ""}>
+            <span>${t("KORUJA_DG.Config.LockCameraPositions")}</span>
           </label>
           <label class="koruja-check-row">
             <input type="checkbox" name="showSceneLowerThird" ${context.showSceneLowerThird ? "checked" : ""}>
@@ -752,6 +758,7 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
     await game.settings.set(MODULE_ID, "sceneClassification", data.sceneClassification || "EYES ONLY // ACTIVE AO");
     await game.settings.set(MODULE_ID, "showSceneLowerThird", Boolean(data.showSceneLowerThird));
     await game.settings.set(MODULE_ID, "showNowPlaying", Boolean(data.showNowPlaying));
+    await game.settings.set(MODULE_ID, "lockCameraPositions", Boolean(data.lockCameraPositions));
     await game.settings.set(MODULE_ID, "showOpClock", Boolean(data.showOpClock));
     await game.settings.set(MODULE_ID, "overlayMode", data.overlayMode || "builtin-tactical");
     await game.settings.set(MODULE_ID, "customOverlayImg", data.customOverlayImg || "");
@@ -894,7 +901,7 @@ class KorujaStreamHUD {
     }
   }
 
-  static syncMediaLayer(actors, overlayMode, activeCombatantActorId) {
+  static syncMediaLayer(actors, overlayMode, activeCombatantActorId, lockCameraPositions = true) {
     if (!this.mediaLayer) return;
     if (overlayMode !== "builtin-tactical" && overlayMode !== "builtin-roleplay") {
       if (this.lastMediaSig !== "") {
@@ -905,9 +912,11 @@ class KorujaStreamHUD {
     }
 
     const slotConfigs = game.settings.get(MODULE_ID, "playerSlotConfigs") || {};
-    const prefix = overlayMode === "builtin-roleplay" ? "koruja-rp" : "koruja-cutout";
+    const useGridRp = overlayMode === "builtin-roleplay" && !lockCameraPositions;
+    const prefix = useGridRp ? "koruja-rp" : "koruja-cutout";
     const sigPayload = {
       overlayMode,
+      useGridRp,
       slots: actors.map((a, i) => {
         const cfg = slotConfigs[a.id] || { mode: "transparent", url: "" };
         return {
@@ -1037,8 +1046,12 @@ class KorujaStreamHUD {
 
     const overlayMode = getEffectiveOverlayMode();
     const isRoleplayMode = overlayMode === "builtin-roleplay";
+    const lockCameraPositions = game.settings.get(MODULE_ID, "lockCameraPositions");
+    const useLockedCams = isRoleplayMode && lockCameraPositions;
     document.body.classList.toggle("koruja-stream-roleplay-mode", isRoleplayMode);
+    document.body.classList.toggle("koruja-stream-locked-cams", useLockedCams);
     this.container.classList.toggle("is-roleplay-mode", isRoleplayMode);
+    this.container.classList.toggle("is-locked-cams", useLockedCams);
 
     const customOverlayImg = game.settings.get(MODULE_ID, "customOverlayImg") || "";
     const showHP = game.settings.get(MODULE_ID, "showHP");
@@ -1058,18 +1071,51 @@ class KorujaStreamHUD {
     document.body.classList.toggle("dg-threat-blind", threatMode === "blind");
     document.body.classList.toggle("dg-game-paused", isPaused);
 
-    const threatOverlayHtml = (threatMode === "stalker" || threatMode === "blind") ? `
-      <div id="dg-threat-overlay" class="dg-threat-${threatMode}">
-        <div class="dg-threat-vignette"></div>
-        <div class="dg-threat-status-strip">${t(threatMode === "stalker" ? "KORUJA_DG.ThreatMode.StalkerStrip" : "KORUJA_DG.ThreatMode.BlindStrip")}</div>
-      </div>
-    ` : "";
+    const noiseSvg = `
+      <svg class="dg-horror-grain" aria-hidden="true">
+        <filter id="dg-noise-filter">
+          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#dg-noise-filter)" />
+      </svg>
+    `;
+
+    let threatOverlayHtml = "";
+    if (threatMode === "stalker") {
+      threatOverlayHtml = `
+        <div id="dg-threat-overlay" class="dg-threat-stalker">
+          ${noiseSvg}
+          <div class="dg-threat-vignette"></div>
+          <svg class="dg-lens-crack" viewBox="0 0 320 220" aria-hidden="true">
+            <path d="M0,0 L78,42 L118,34 L165,86 M78,42 L56,96 L94,132 M118,34 L145,12 M56,96 L18,128" fill="none" stroke="rgba(255,255,255,0.42)" stroke-width="1.4" />
+          </svg>
+          <div class="dg-threat-status-strip">${t("KORUJA_DG.ThreatMode.StalkerStrip")}</div>
+        </div>
+      `;
+    } else if (threatMode === "blind") {
+      threatOverlayHtml = `
+        <div id="dg-threat-overlay" class="dg-threat-blind">
+          ${noiseSvg}
+          <div class="dg-threat-vignette"></div>
+          <div class="dg-subliminal-flash">${t("KORUJA_DG.ThreatMode.SubliminalBlind")}</div>
+          <div class="dg-sonar-ring ring-1"></div>
+          <div class="dg-sonar-ring ring-2"></div>
+          <div class="dg-threat-status-strip">
+            <span>${t("KORUJA_DG.ThreatMode.BlindStrip")}</span>
+            <span class="dg-db-meter">
+              <span class="dg-db-label">${t("KORUJA_DG.ThreatMode.AudioSpike")}</span>
+              <span class="dg-db-bars"><span class="dg-db-bar"></span><span class="dg-db-bar"></span><span class="dg-db-bar"></span><span class="dg-db-bar"></span></span>
+            </span>
+          </div>
+        </div>
+      `;
+    }
 
     const showOpClock = game.settings.get(MODULE_ID, "showOpClock");
     const showNowPlaying = game.settings.get(MODULE_ID, "showNowPlaying");
     const activeTrack = showNowPlaying ? getActivePlaylistTrack() : null;
 
-    const pos = isRoleplayMode
+    const pos = (isRoleplayMode && !lockCameraPositions)
       ? foundry.utils.deepClone(ROLEPLAY_POSITIONS)
       : foundry.utils.mergeObject(
           foundry.utils.deepClone(DEFAULT_POSITIONS),
@@ -1081,7 +1127,7 @@ class KorujaStreamHUD {
     const activeCombatant = game.combat?.started ? game.combat.combatant : null;
     const activeCombatantActorId = activeCombatant?.actor?.id || null;
 
-    this.syncMediaLayer(actors, overlayMode, activeCombatantActorId);
+    this.syncMediaLayer(actors, overlayMode, activeCombatantActorId, lockCameraPositions);
 
     const nowPlayingHtml = activeTrack ? `
       <span class="dg-now-playing" title="${escapeHtml(activeTrack.playlist)}">
@@ -1089,6 +1135,13 @@ class KorujaStreamHUD {
         <span class="dg-np-track">${t("KORUJA_DG.HUD.NowPlayingPrefix")} ${escapeHtml(activeTrack.track)}</span>
       </span>
     ` : "";
+
+    const isRecErr = !isPaused && threatMode === "stalker";
+    const recBadgeHtml = isPaused
+      ? `<span class="dg-rec-badge is-paused"><i class="fa-solid fa-pause"></i> ${t("KORUJA_DG.HUD.PausedBadge")}</span>`
+      : isRecErr
+        ? `<span class="dg-rec-badge is-err"><span class="live-dot"></span> ${t("KORUJA_DG.HUD.RecErr")}</span>`
+        : `<span class="dg-rec-badge"><span class="live-dot"></span> ${t("KORUJA_DG.HUD.LiveRec")}</span>`;
 
     const topBarHtml = `
       <div class="koruja-top-bar">
@@ -1101,7 +1154,7 @@ class KorujaStreamHUD {
         <div class="top-right">
           <span class="dg-defcon-pill defcon-${escapeHtml(defconLevel)}">${t(`KORUJA_DG.Defcon.D${defconLevel}`)}</span>
           ${showOpClock ? `<span class="dg-op-clock">${formatTacticalClock()}</span>` : ""}
-          <span class="dg-rec-badge ${isPaused ? "is-paused" : ""}">${isPaused ? `<i class="fa-solid fa-pause"></i> ${t("KORUJA_DG.HUD.PausedBadge")}` : `<span class="live-dot"></span> ${t("KORUJA_DG.HUD.LiveRec")}`}</span>
+          ${recBadgeHtml}
         </div>
       </div>
     `;
@@ -1124,44 +1177,85 @@ class KorujaStreamHUD {
       `;
     } else if (overlayMode === "builtin-roleplay") {
       const wallpaperPath = `modules/${MODULE_ID}/assets/wallpaper.jpg`;
-      backdropHtml = `
-        <div class="koruja-builtin-frame koruja-rp-frame">
-          <svg class="koruja-rp-bg-svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
-            <defs>
-              <mask id="koruja-rp-holes">
-                <rect width="1920" height="1080" fill="white" />
-                <rect x="36" y="90" width="426" height="240" rx="4" fill="black" />
-                <rect x="498" y="90" width="426" height="240" rx="4" fill="black" />
-                <rect x="960" y="90" width="426" height="240" rx="4" fill="black" />
-                <rect x="36" y="446" width="426" height="240" rx="4" fill="black" />
-                <rect x="498" y="446" width="426" height="240" rx="4" fill="black" />
-                <rect x="960" y="446" width="426" height="240" rx="4" fill="black" />
-                <rect x="1430" y="90" width="454" height="255" rx="4" fill="black" />
-              </mask>
-            </defs>
-            <image href="${wallpaperPath}" width="1920" height="1080" preserveAspectRatio="xMidYMid slice" mask="url(#koruja-rp-holes)" />
-            <rect width="1920" height="1080" fill="rgba(5, 8, 10, 0.72)" mask="url(#koruja-rp-holes)" />
-          </svg>
+      if (lockCameraPositions) {
+        backdropHtml = `
+          <div class="koruja-builtin-frame koruja-rp-frame is-locked-cams">
+            <svg class="koruja-rp-bg-svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+              <defs>
+                <mask id="koruja-rp-holes-locked">
+                  <rect width="1920" height="1080" fill="white" />
+                  <rect x="20" y="874" width="228" height="154" rx="4" fill="black" />
+                  <rect x="258" y="874" width="228" height="154" rx="4" fill="black" />
+                  <rect x="496" y="874" width="228" height="154" rx="4" fill="black" />
+                  <rect x="734" y="874" width="228" height="154" rx="4" fill="black" />
+                  <rect x="972" y="874" width="228" height="154" rx="4" fill="black" />
+                  <rect x="1210" y="874" width="228" height="154" rx="4" fill="black" />
+                  <rect x="1460" y="56" width="440" height="258" rx="4" fill="black" />
+                </mask>
+              </defs>
+              <image href="${wallpaperPath}" width="1920" height="1080" preserveAspectRatio="xMidYMid slice" mask="url(#koruja-rp-holes-locked)" />
+              <rect width="1920" height="1080" fill="rgba(5, 8, 10, 0.72)" mask="url(#koruja-rp-holes-locked)" />
+            </svg>
 
-          ${topBarHtml}
+            ${topBarHtml}
 
-          <div class="koruja-cutout koruja-rp-p1"></div>
-          <div class="koruja-cutout koruja-rp-p2"></div>
-          <div class="koruja-cutout koruja-rp-p3"></div>
-          <div class="koruja-cutout koruja-rp-p4"></div>
-          <div class="koruja-cutout koruja-rp-p5"></div>
-          <div class="koruja-cutout koruja-rp-p6"></div>
-          <div class="koruja-cutout koruja-rp-gm"><div class="cutout-tag">HANDLER</div></div>
+            <div class="koruja-cutout koruja-cutout-gm"><div class="cutout-tag">HANDLER</div></div>
+            <div class="koruja-cutout koruja-cutout-p1"></div>
+            <div class="koruja-cutout koruja-cutout-p2"></div>
+            <div class="koruja-cutout koruja-cutout-p3"></div>
+            <div class="koruja-cutout koruja-cutout-p4"></div>
+            <div class="koruja-cutout koruja-cutout-p5"></div>
+            <div class="koruja-cutout koruja-cutout-p6"></div>
 
-          <div class="koruja-rp-lore-banner">
-            <img class="rp-lore-crest" src="modules/${MODULE_ID}/assets/crest.png" onerror="this.style.display='none'">
-            <div class="rp-lore-text">
-              <div class="rp-lore-title">${escapeHtml(operationName.toUpperCase())}</div>
-              <div class="rp-lore-sub">${t(`KORUJA_DG.Status.${agencyStatus}`)} // DELTA GREEN FIELD FEED</div>
+            <div class="koruja-rp-lore-banner">
+              <img class="rp-lore-crest" src="modules/${MODULE_ID}/assets/crest.png" onerror="this.style.display='none'">
+              <div class="rp-lore-text">
+                <div class="rp-lore-title">${escapeHtml(operationName.toUpperCase())}</div>
+                <div class="rp-lore-sub">${t(`KORUJA_DG.Status.${agencyStatus}`)} // DELTA GREEN FIELD FEED</div>
+              </div>
             </div>
           </div>
-        </div>
-      `;
+        `;
+      } else {
+        backdropHtml = `
+          <div class="koruja-builtin-frame koruja-rp-frame">
+            <svg class="koruja-rp-bg-svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+              <defs>
+                <mask id="koruja-rp-holes">
+                  <rect width="1920" height="1080" fill="white" />
+                  <rect x="36" y="90" width="426" height="240" rx="4" fill="black" />
+                  <rect x="498" y="90" width="426" height="240" rx="4" fill="black" />
+                  <rect x="960" y="90" width="426" height="240" rx="4" fill="black" />
+                  <rect x="36" y="446" width="426" height="240" rx="4" fill="black" />
+                  <rect x="498" y="446" width="426" height="240" rx="4" fill="black" />
+                  <rect x="960" y="446" width="426" height="240" rx="4" fill="black" />
+                  <rect x="1430" y="90" width="454" height="255" rx="4" fill="black" />
+                </mask>
+              </defs>
+              <image href="${wallpaperPath}" width="1920" height="1080" preserveAspectRatio="xMidYMid slice" mask="url(#koruja-rp-holes)" />
+              <rect width="1920" height="1080" fill="rgba(5, 8, 10, 0.72)" mask="url(#koruja-rp-holes)" />
+            </svg>
+
+            ${topBarHtml}
+
+            <div class="koruja-cutout koruja-rp-p1"></div>
+            <div class="koruja-cutout koruja-rp-p2"></div>
+            <div class="koruja-cutout koruja-rp-p3"></div>
+            <div class="koruja-cutout koruja-rp-p4"></div>
+            <div class="koruja-cutout koruja-rp-p5"></div>
+            <div class="koruja-cutout koruja-rp-p6"></div>
+            <div class="koruja-cutout koruja-rp-gm"><div class="cutout-tag">HANDLER</div></div>
+
+            <div class="koruja-rp-lore-banner">
+              <img class="rp-lore-crest" src="modules/${MODULE_ID}/assets/crest.png" onerror="this.style.display='none'">
+              <div class="rp-lore-text">
+                <div class="rp-lore-title">${escapeHtml(operationName.toUpperCase())}</div>
+                <div class="rp-lore-sub">${t(`KORUJA_DG.Status.${agencyStatus}`)} // DELTA GREEN FIELD FEED</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
     } else if (overlayMode === "custom-image" && customOverlayImg) {
       backdropHtml = `<img class="koruja-custom-overlay-bg" src="${escapeHtml(customOverlayImg)}" alt="Overlay">`;
     }
@@ -1648,6 +1742,14 @@ Hooks.once("init", () => {
     config: false,
     type: String,
     default: ""
+  });
+
+  game.settings.register(MODULE_ID, "lockCameraPositions", {
+    scope: "world",
+    config: false,
+    type: Boolean,
+    default: true,
+    onChange: () => KorujaStreamHUD.render()
   });
 
   game.settings.register(MODULE_ID, "activeMonsterCard", {

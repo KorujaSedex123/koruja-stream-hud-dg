@@ -76,11 +76,14 @@
       "StalkerGifLabel": "Stalker GIF (Monster 1)",
       "BlindGifLabel": "Blind Listener GIF (Monster 2)",
       "CaretakerGifLabel": "Caretaker Silas GIF (Monster 3)",
-      "GifPlaceholder": "Browse monster .gif in Foundry..."
+      "GifPlaceholder": "Browse monster .gif in Foundry...",
+      "LockCameraPositions": "Lock Camera Positions (Tactical = Roleplay)"
     },
     "ThreatMode": {
       "StalkerStrip": "HOSTILE CONTACT // STALKER DETECTED",
-      "BlindStrip": "ACOUSTIC ANOMALY // MAINTAIN SILENCE"
+      "BlindStrip": "ACOUSTIC ANOMALY // MAINTAIN SILENCE",
+      "SubliminalBlind": "DON'T MOVE // SILENCE",
+      "AudioSpike": "AUDIO SPIKE"
     },
     "Defcon": {
       "D1": "DEFCON 1 — MAXIMUM THREAT",
@@ -106,6 +109,7 @@
     },
     "HUD": {
       "LiveRec": "REC",
+      "RecErr": "REC [ERR]",
       "PausedBadge": "PAUSE",
       "PausedTitle": "FEED PAUSED // STAND BY",
       "PausedSub": "AWAITING OPERATION RESUME",
