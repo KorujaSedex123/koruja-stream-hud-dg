@@ -796,6 +796,7 @@ class KorujaStreamHUD {
   static threatOverlayOverride = null;
   static monsterCardOverride = null;
   static tapeBannerOverride = null;
+  static puzzleStateOverride = null;
 
   static init() {
     if (!this.shouldRender()) {
@@ -840,6 +841,9 @@ class KorujaStreamHUD {
           this.render();
         } else if (ev.data?.action === "set-tape-banner") {
           this.tapeBannerOverride = ev.data.tape || { active: false, title: "", subtitle: "" };
+          this.render();
+        } else if (ev.data?.action === "set-puzzle-state") {
+          this.puzzleStateOverride = ev.data.state || { active: false };
           this.render();
         }
       };
@@ -1570,7 +1574,51 @@ class KorujaStreamHUD {
       `;
     }
 
-    this.container.innerHTML = `${backdropHtml}${threatOverlayHtml}${pauseOverlayHtml}${tapeHtml}${bossHtml}${cardsHtml}${chatHtml}${combatHtml}`;
+    const activePuzzle = this.puzzleStateOverride || game.settings.get(MODULE_ID, "activePuzzleState") || { active: false };
+    let puzzleHtml = "";
+    if (activePuzzle?.active) {
+      const ctrlName = escapeHtml(activePuzzle.controllerName || "Agente");
+      let bodyHtml = "";
+      if (activePuzzle.type === "fuses") {
+        const keys = [
+          { k: "a", label: "A: FREEZER" },
+          { k: "b", label: "B: REFLETORES" },
+          { k: "c", label: "C: CHALEIRA" },
+          { k: "d", label: "D: AUXILIAR" }
+        ];
+        const cells = keys.map(it => {
+          const on = Boolean(activePuzzle.data?.[it.k]);
+          return `<div class="dg-lp-fuse ${on ? "is-on" : "is-off"}"><span class="dg-lp-led"></span><span>${it.label}</span><span class="dg-lp-st">${on ? "ON" : "OFF"}</span></div>`;
+        }).join("");
+        bodyHtml = `<div class="dg-lp-fuses-grid">${cells}</div>`;
+      } else if (activePuzzle.type === "clock") {
+        const labels = { none: "VAZIO", falcao: "FALCÃO (1KG)", coruja: "CORUJA (2KG)", bode: "BODE (4KG)" };
+        const d = activePuzzle.data || {};
+        bodyHtml = `
+          <div class="dg-lp-clock-grid">
+            <div class="dg-lp-slot"><span>ESQ</span><strong>${labels[d.left] || "VAZIO"}</strong></div>
+            <div class="dg-lp-slot"><span>CENTRO</span><strong>${labels[d.center] || "VAZIO"}</strong></div>
+            <div class="dg-lp-slot"><span>DIR</span><strong>${labels[d.right] || "VAZIO"}</strong></div>
+          </div>
+          <div class="dg-lp-clock-time"><i class="fa-solid fa-clock"></i> HORA: <strong>${escapeHtml(d.hour || "12:00")}</strong></div>
+        `;
+      }
+      const resHtml = activePuzzle.resultText
+        ? `<div class="dg-lp-result res-${escapeHtml(activePuzzle.resultKind || "info")}">${escapeHtml(activePuzzle.resultText)}</div>`
+        : "";
+      puzzleHtml = `
+        <div id="dg-live-puzzle" class="dg-live-puzzle">
+          <div class="dg-lp-header">
+            <span><i class="fa-solid fa-puzzle-piece"></i> ${activePuzzle.type === "fuses" ? "QUADRO DE FUSÍVEIS" : "RELÓGIO DE PÊNDULO"}</span>
+            <span class="dg-lp-ctrl">CONTROLE: ${ctrlName.toUpperCase()}</span>
+          </div>
+          ${bodyHtml}
+          ${resHtml}
+        </div>
+      `;
+    }
+
+    this.container.innerHTML = `${backdropHtml}${threatOverlayHtml}${pauseOverlayHtml}${tapeHtml}${puzzleHtml}${bossHtml}${cardsHtml}${chatHtml}${combatHtml}`;
     if (this.epicBannerEl) this.container.appendChild(this.epicBannerEl);
     if (this.lowerThirdEl) this.container.appendChild(this.lowerThirdEl);
     if (this.spotlightEl) this.container.appendChild(this.spotlightEl);
@@ -1774,6 +1822,18 @@ Hooks.once("init", () => {
     }
   });
 
+  game.settings.register(MODULE_ID, "activePuzzleState", {
+    scope: "world",
+    config: false,
+    type: Object,
+    default: { active: false },
+    onChange: (val) => {
+      KorujaStreamHUD.puzzleStateOverride = null;
+      KorujaStreamHUD.render();
+      KorujaPuzzleManager.onRemoteState(val);
+    }
+  });
+
   game.settings.register(MODULE_ID, "showSceneLowerThird", {
     name: "KORUJA_DG.Settings.ShowSceneLowerThird",
     scope: "world",
@@ -1917,7 +1977,9 @@ Hooks.once("init", () => {
         await game.settings.set(MODULE_ID, "activeTapeBanner", tape);
       }
     },
-    triggerLowerThird: (sceneName) => KorujaStreamHUD.showSceneLowerThird(sceneName)
+    triggerLowerThird: (sceneName) => KorujaStreamHUD.showSceneLowerThird(sceneName),
+    openPuzzleSelector: () => KorujaPuzzleManager.openSelector(),
+    closePuzzle: () => KorujaPuzzleManager.closeAll()
   };
 });
 
@@ -2111,3 +2173,262 @@ Hooks.on("createChatMessage", (message) => {
     }
   }
 });
+
+/**
+ * Synchronized Multiplayer Puzzle App + OBS Live Overlay Sync
+ * Lets the GM pick 1 player to interact while everyone else watches live.
+ */
+class KorujaPuzzleApp extends foundry.applications.api.ApplicationV2 {
+  static DEFAULT_OPTIONS = {
+    id: "koruja-live-puzzle-app",
+    window: { title: "Enigma em Andamento", icon: "fa-solid fa-puzzle-piece", resizable: false },
+    position: { width: 460, height: "auto" }
+  };
+
+  async _renderHTML() {
+    const state = KorujaPuzzleManager.currentState;
+    const wrap = document.createElement("div");
+    wrap.classList.add("dg-puzzle-app");
+    if (!state?.active) {
+      wrap.innerHTML = `<p>Nenhum enigma ativo.</p>`;
+      return wrap;
+    }
+
+    const canControl = game.user?.id === state.controllerUserId || game.user?.isGM;
+    const dis = canControl ? "" : "disabled";
+    const modeBanner = canControl
+      ? `<div class="dg-pa-banner is-ctrl">SEU CONTROLE — INTERAJA COM O ENIGMA</div>`
+      : `<div class="dg-pa-banner is-obs">OBSERVANDO — CONTROLE: ${escapeHtml(state.controllerName)}</div>`;
+
+    let inner = "";
+    if (state.type === "fuses") {
+      const d = state.data || { a: true, b: false, c: false, d: false };
+      inner = `
+        <div class="dg-pa-title">QUADRO ELÉTRICO — DESPENSA DA COZINHA</div>
+        <p class="dg-pa-hint">Capacidade máxima: exatamente 2 fases ativas.</p>
+        <div class="dg-pa-grid-2">
+          <label><input type="checkbox" data-field="a" ${d.a ? "checked" : ""} ${dis}> <strong>A:</strong> Freezer</label>
+          <label><input type="checkbox" data-field="b" ${d.b ? "checked" : ""} ${dis}> <strong>B:</strong> Refletores</label>
+          <label><input type="checkbox" data-field="c" ${d.c ? "checked" : ""} ${dis}> <strong>C:</strong> Tomadas / Chaleira</label>
+          <label><input type="checkbox" data-field="d" ${d.d ? "checked" : ""} ${dis}> <strong>D:</strong> Circuito Auxiliar</label>
+        </div>
+        ${canControl ? `<button type="button" class="dg-pa-submit" data-action="test-puzzle">Testar Disjuntores</button>` : ""}
+      `;
+    } else if (state.type === "clock") {
+      const d = state.data || { left: "none", center: "none", right: "none", hour: "12:00" };
+      const opts = (val) => `
+        <option value="none" ${val === "none" ? "selected" : ""}>— Vazio —</option>
+        <option value="falcao" ${val === "falcao" ? "selected" : ""}>Falcão de Bronze (1,0 kg)</option>
+        <option value="coruja" ${val === "coruja" ? "selected" : ""}>Coruja de Bronze (2,0 kg)</option>
+        <option value="bode" ${val === "bode" ? "selected" : ""}>Bode de Bronze (4,0 kg)</option>
+      `;
+      const hours = Array.from({ length: 12 }, (_, i) => {
+        const h = `${String(i === 0 ? 12 : i).padStart(2, "0")}:00`;
+        return `<option value="${h}" ${d.hour === h ? "selected" : ""}>${h}</option>`;
+      }).join("");
+      inner = `
+        <div class="dg-pa-title">RELÓGIO DE PÊNDULO — SALA CENTRAL</div>
+        <div class="dg-pa-grid-3">
+          <div><span>Esquerda</span><select data-field="left" ${dis}>${opts(d.left)}</select></div>
+          <div><span>Centro</span><select data-field="center" ${dis}>${opts(d.center)}</select></div>
+          <div><span>Direita</span><select data-field="right" ${dis}>${opts(d.right)}</select></div>
+        </div>
+        <div class="dg-pa-hour"><span>Hora nos Ponteiros:</span><select data-field="hour" ${dis}>${hours}</select></div>
+        ${canControl ? `<button type="button" class="dg-pa-submit" data-action="test-puzzle">Soltar Pêndulo</button>` : ""}
+      `;
+    }
+
+    const resHtml = state.resultText
+      ? `<div class="dg-pa-result res-${escapeHtml(state.resultKind || "info")}">${escapeHtml(state.resultText)}</div>`
+      : "";
+
+    wrap.innerHTML = `${modeBanner}${inner}${resHtml}`;
+
+    if (canControl) {
+      wrap.querySelectorAll("[data-field]").forEach(el => {
+        el.addEventListener("change", () => {
+          const field = el.dataset.field;
+          const val = el.type === "checkbox" ? el.checked : el.value;
+          const next = foundry.utils.deepClone(KorujaPuzzleManager.currentState);
+          next.data = next.data || {};
+          next.data[field] = val;
+          next.resultText = "";
+          KorujaPuzzleManager.pushUpdate(next);
+        });
+      });
+
+      wrap.querySelector("[data-action='test-puzzle']")?.addEventListener("click", () => {
+        KorujaPuzzleManager.evaluatePuzzle();
+      });
+    }
+
+    return wrap;
+  }
+
+  _replaceHTML(result, content) {
+    content.replaceChildren(result);
+  }
+}
+
+class KorujaPuzzleManager {
+  static app = null;
+  static currentState = { active: false };
+
+  static init() {
+    this.currentState = game.settings.get(MODULE_ID, "activePuzzleState") || { active: false };
+    game.socket.on(`module.${MODULE_ID}`, async (payload) => {
+      if (!payload) return;
+      if (payload.action === "puzzle-sync") {
+        this.currentState = payload.state || { active: false };
+        if (game.user?.isGM) {
+          await game.settings.set(MODULE_ID, "activePuzzleState", this.currentState);
+        }
+        if (typeof BroadcastChannel !== "undefined") {
+          const ch = new BroadcastChannel(MODULE_ID);
+          ch.postMessage({ action: "set-puzzle-state", state: this.currentState });
+          ch.close();
+        }
+        KorujaStreamHUD.puzzleStateOverride = this.currentState;
+        KorujaStreamHUD.render();
+        this.syncAppWindow();
+      } else if (payload.action === "puzzle-chat" && game.user?.isGM) {
+        await ChatMessage.create({ content: payload.html });
+      }
+    });
+  }
+
+  static onRemoteState(val) {
+    this.currentState = val || { active: false };
+    this.syncAppWindow();
+  }
+
+  static syncAppWindow() {
+    if (isStreamMode()) return;
+    if (this.currentState?.active) {
+      if (!this.app) this.app = new KorujaPuzzleApp();
+      this.app.render({ force: true });
+    } else if (this.app) {
+      this.app.close();
+      this.app = null;
+    }
+  }
+
+  static async pushUpdate(state) {
+    this.currentState = state;
+    if (typeof BroadcastChannel !== "undefined") {
+      const ch = new BroadcastChannel(MODULE_ID);
+      ch.postMessage({ action: "set-puzzle-state", state });
+      ch.close();
+    }
+    game.socket.emit(`module.${MODULE_ID}`, { action: "puzzle-sync", state });
+    if (game.user?.isGM) {
+      await game.settings.set(MODULE_ID, "activePuzzleState", state);
+    }
+    KorujaStreamHUD.render();
+    this.syncAppWindow();
+  }
+
+  static async closeAll() {
+    await this.pushUpdate({ active: false });
+  }
+
+  static async evaluatePuzzle() {
+    const st = foundry.utils.deepClone(this.currentState);
+    if (!st?.active) return;
+    let msgHtml = "";
+
+    if (st.type === "fuses") {
+      const d = st.data || {};
+      const activeCount = [d.a, d.b, d.c, d.d].filter(Boolean).length;
+      if (!d.a && d.b && d.c && !d.d) {
+        st.resultKind = "ok";
+        st.resultText = "ESTABILIZADO! (B + C ATIVOS)";
+        msgHtml = `<div style="border-left:4px solid #34d399; background:#091410; color:#d1fae5; padding:8px; font-family:monospace;"><strong>[DISJUNTORES ESTABILIZADOS — B + C ATIVOS]</strong><br>Os refletores do pátio acendem e a chaleira da cozinha começa a ferver! O freezer desliga.</div>`;
+      } else if (d.d || activeCount >= 3) {
+        st.resultKind = "err";
+        st.resultText = "SOBRECARGA! SIRENE DISPARADA!";
+        msgHtml = `<div style="border-left:4px solid #ef4444; background:#1a0808; color:#fecaca; padding:8px; font-family:monospace;"><strong>[SOBRECARGA! SIRENE DISPARADA!]</strong><br>Um alarme estridente ecoa pela Casa Juno! Algo lá fora ouviu...</div>`;
+      } else {
+        st.resultKind = "warn";
+        st.resultText = "FASE INSUFICIENTE";
+        msgHtml = `<div style="border-left:4px solid #f59e0b; background:#141008; color:#fde68a; padding:8px; font-family:monospace;"><strong>[FASE INSUFICIENTE]</strong><br>As luzes piscam fraco, mas a chaleira ainda não ferve.</div>`;
+      }
+    } else if (st.type === "clock") {
+      const d = st.data || {};
+      if (d.left === "falcao" && d.center === "coruja" && d.right === "bode" && d.hour === "03:00") {
+        st.resultKind = "ok";
+        st.resultText = "DESTRAVADO! (03:00)";
+        msgHtml = `<div style="border-left:4px solid #34d399; background:#091410; color:#d1fae5; padding:8px; font-family:monospace;"><strong>[MECANISMO DESTRAVADO — 03:00]</strong><br>O compartimento secreto na base do relógio se abre, revelando a <strong>Fita Cassete #2</strong> e a <strong>Chave de Latão</strong>!</div>`;
+      } else {
+        st.resultKind = "err";
+        st.resultText = "BADALADA ALTA (+2 RUÍDO)!";
+        msgHtml = `<div style="border-left:4px solid #ef4444; background:#1a0808; color:#fecaca; padding:8px; font-family:monospace;"><strong>[BADALADA ALTA — DONGGG!]</strong><br>O sino do relógio ecoa violentamente pelas vigas da casa (+2 Ruído)!</div>`;
+      }
+    }
+
+    await this.pushUpdate(st);
+    if (msgHtml) {
+      if (game.user?.isGM) await ChatMessage.create({ content: msgHtml });
+      else game.socket.emit(`module.${MODULE_ID}`, { action: "puzzle-chat", html: msgHtml });
+    }
+    if (st.resultKind === "ok") {
+      setTimeout(() => this.closeAll(), 4500);
+    }
+  }
+
+  static async openSelector() {
+    if (!game.user?.isGM) return;
+    const streamName = (game.settings.get(MODULE_ID, "streamUser") || "Stream").trim().toLowerCase();
+    const candidates = game.users.filter(u => !u.isGM && u.name.trim().toLowerCase() !== streamName);
+    const userList = candidates.length ? candidates : [game.user];
+    const userOpts = userList.map(u => {
+      const charName = u.character?.name ? ` (${u.character.name})` : "";
+      return `<option value="${u.id}">${escapeHtml(u.name + charName)}</option>`;
+    }).join("");
+
+    const res = await foundry.applications.api.DialogV2.prompt({
+      window: { title: "Enviar Enigma ao Vivo para Jogador", icon: "fa-solid fa-puzzle-piece" },
+      content: `
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="form-group">
+            <label><strong>Qual Puzzle abrir:</strong></label>
+            <select name="puzzleType" style="width:100%; margin-top:4px;">
+              <option value="fuses">1. Quadro de Fusíveis (Cozinha)</option>
+              <option value="clock">2. Relógio de Pêndulo (Sala)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label><strong>Quem vai mexer (os outros só observam):</strong></label>
+            <select name="userId" style="width:100%; margin-top:4px;">${userOpts}</select>
+          </div>
+        </div>
+      `,
+      ok: {
+        label: "Abrir para Todos + Live",
+        callback: (ev, btn) => ({
+          type: btn.form.elements.puzzleType.value,
+          userId: btn.form.elements.userId.value
+        })
+      }
+    });
+    if (!res) return;
+
+    const chosenUser = game.users.get(res.userId);
+    const displayName = chosenUser?.character?.name || chosenUser?.name || "Agente";
+    const initialData = res.type === "fuses"
+      ? { a: true, b: false, c: false, d: false }
+      : { left: "none", center: "none", right: "none", hour: "12:00" };
+
+    await this.pushUpdate({
+      active: true,
+      type: res.type,
+      controllerUserId: res.userId,
+      controllerName: displayName,
+      data: initialData,
+      resultText: "",
+      resultKind: ""
+    });
+  }
+}
+
+Hooks.once("ready", () => KorujaPuzzleManager.init());

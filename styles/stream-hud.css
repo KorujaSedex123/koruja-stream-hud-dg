@@ -2505,3 +2505,149 @@ body.koruja-stream-roleplay-mode .dg-pause-overlay {
   animation: none;
 }
 .dg-ecg-row.ecg-flatline .dg-ecg-bpm { color: #ef4444; }
+
+/* --- LIVE MULTIPLAYER PUZZLE OVERLAY (OBS) --- */
+.dg-live-puzzle {
+  position: fixed;
+  top: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 540px;
+  z-index: 70;
+  padding: 14px 16px;
+  background: rgba(8, 12, 16, 0.94);
+  border: 1px solid rgba(34, 211, 238, 0.65);
+  border-top: 3px solid #22d3ee;
+  border-radius: 5px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.85), 0 0 24px rgba(34, 211, 238, 0.2);
+  backdrop-filter: blur(8px);
+  font-family: var(--dg-font-mono);
+  pointer-events: none;
+}
+
+.dg-lp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 900;
+  color: #67e8f9;
+  letter-spacing: 1px;
+}
+
+.dg-lp-ctrl {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.55);
+  color: #fcd34d;
+}
+
+.dg-lp-fuses-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.dg-lp-fuse {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.dg-lp-fuse.is-on {
+  border-color: rgba(52, 211, 153, 0.65);
+  background: rgba(6, 78, 59, 0.45);
+  color: #ecfdf5;
+}
+
+.dg-lp-led {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #475569;
+}
+
+.dg-lp-fuse.is-on .dg-lp-led {
+  background: #34d399;
+  box-shadow: 0 0 8px #34d399;
+}
+
+.dg-lp-st {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.dg-lp-clock-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.dg-lp-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.dg-lp-slot span { font-size: 9px; color: #94a3b8; }
+.dg-lp-slot strong { font-size: 11px; color: #f8fafc; }
+
+.dg-lp-clock-time {
+  margin-top: 8px;
+  text-align: center;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 4px;
+  font-size: 13px;
+  color: #fde68a;
+}
+
+.dg-lp-result {
+  margin-top: 10px;
+  padding: 7px 10px;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+}
+
+.dg-lp-result.res-ok { background: rgba(6, 78, 59, 0.85); border: 1px solid #34d399; color: #6ee7b7; }
+.dg-lp-result.res-err { background: rgba(127, 29, 29, 0.85); border: 1px solid #ef4444; color: #fecaca; }
+.dg-lp-result.res-warn { background: rgba(120, 53, 15, 0.85); border: 1px solid #f59e0b; color: #fde68a; }
+
+/* --- PLAYER INTERACTIVE PUZZLE WINDOW --- */
+.dg-puzzle-app { display: flex; flex-direction: column; gap: 10px; padding: 6px; font-family: var(--dg-font-mono); }
+.dg-pa-banner { padding: 6px 10px; border-radius: 4px; font-size: 11px; font-weight: 800; text-align: center; letter-spacing: 1px; }
+.dg-pa-banner.is-ctrl { background: rgba(6, 78, 59, 0.5); border: 1px solid #34d399; color: #6ee7b7; }
+.dg-pa-banner.is-obs { background: rgba(120, 53, 15, 0.45); border: 1px solid #f59e0b; color: #fde68a; }
+.dg-pa-title { font-weight: 900; font-size: 13px; color: #f8fafc; }
+.dg-pa-hint { font-size: 11px; opacity: 0.8; margin: 0; }
+.dg-pa-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dg-pa-grid-2 label { display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(0, 0, 0, 0.25); border-radius: 4px; }
+.dg-pa-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.dg-pa-grid-3 span, .dg-pa-hour span { font-size: 11px; display: block; margin-bottom: 3px; }
+.dg-pa-grid-3 select, .dg-pa-hour select { width: 100%; }
+.dg-pa-submit { width: 100%; padding: 8px; font-weight: 800; cursor: pointer; }
+.dg-pa-result { padding: 8px; border-radius: 4px; text-align: center; font-weight: 900; font-size: 12px; }
+.dg-pa-result.res-ok { background: rgba(6, 78, 59, 0.7); border: 1px solid #34d399; color: #6ee7b7; }
+.dg-pa-result.res-err { background: rgba(127, 29, 29, 0.7); border: 1px solid #ef4444; color: #fecaca; }
+.dg-pa-result.res-warn { background: rgba(120, 53, 15, 0.7); border: 1px solid #f59e0b; color: #fde68a; }
