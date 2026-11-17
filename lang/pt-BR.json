@@ -67,6 +67,7 @@
       "SceneClassLabel": "Classificação da Cena",
       "ShowLowerThird": "Exibir Lower-Third ao Trocar Cena",
       "ShowNowPlaying": "Exibir Música Tocando (Now Playing)",
+      "ShowSceneLight": "Exibir Iluminação da Cena",
       "TestLowerThird": "Testar Lower-Third",
       "TestBondDegraded": "Testar Degradação de Vínculo",
       "ThreatOverlayLabel": "Modo de Ameaça no Overlay",
@@ -109,6 +110,9 @@
     },
     "HUD": {
       "LiveRec": "REC",
+      "LightDark": "BREU TOTAL",
+      "LightDim": "PENUMBRA",
+      "LightBright": "ILUMINADO",
       "RecErr": "REC [ERR]",
       "PausedBadge": "PAUSE",
       "PausedTitle": "TRANSMISSÃO PAUSADA // STAND BY",

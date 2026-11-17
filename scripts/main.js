@@ -127,6 +127,41 @@ function getActivePlaylistTrack() {
   return null;
 }
 
+function getSceneLightInfo() {
+  const scene = canvas?.scene || game.scenes?.active;
+  const darkness = Number(scene?.environment?.darknessLevel ?? canvas?.darknessLevel ?? 0);
+  const globalLight = Boolean(scene?.environment?.globalLight?.enabled ?? scene?.globalLight);
+  if (globalLight && darkness < 0.5) {
+    return { cls: "light-bright", key: "KORUJA_DG.HUD.LightBright", icon: "fa-solid fa-sun" };
+  }
+  if (darkness >= 0.8) {
+    return { cls: "light-dark", key: "KORUJA_DG.HUD.LightDark", icon: "fa-solid fa-moon" };
+  }
+  if (darkness >= 0.4) {
+    return { cls: "light-dim", key: "KORUJA_DG.HUD.LightDim", icon: "fa-solid fa-cloud-moon" };
+  }
+  return { cls: "light-bright", key: "KORUJA_DG.HUD.LightBright", icon: "fa-solid fa-sun" };
+}
+
+function getActorDisorders(actor) {
+  const list = [];
+  for (const ef of actor?.effects || []) {
+    if (ef.disabled) continue;
+    const raw = String(ef.name || "").trim();
+    if (/^(?:transtorno|disorder)\s*:/i.test(raw)) {
+      list.push(raw.replace(/^(?:transtorno|disorder)\s*:\s*/i, "").trim());
+    }
+  }
+  if (!list.length && actor?.system?.mental?.disorders) {
+    const lines = String(actor.system.mental.disorders).split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    for (const line of lines) {
+      const shortName = line.split("—")[0].split("-")[0].trim();
+      if (shortName) list.push(shortName);
+    }
+  }
+  return list.slice(0, 2);
+}
+
 function analyzeDeltaGreenRoll(message) {
   const roll = message?.rolls?.[0];
   if (!roll) return null;
@@ -231,6 +266,7 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
     const sceneClassification = game.settings.get(MODULE_ID, "sceneClassification") || "EYES ONLY // ACTIVE AO";
     const showSceneLowerThird = game.settings.get(MODULE_ID, "showSceneLowerThird");
     const showNowPlaying = game.settings.get(MODULE_ID, "showNowPlaying");
+    const showSceneLight = game.settings.get(MODULE_ID, "showSceneLight");
     const lockCameraPositions = game.settings.get(MODULE_ID, "lockCameraPositions");
     const savedPositions = game.settings.get(MODULE_ID, "cardPositions") || {};
 
@@ -271,6 +307,7 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
       sceneClassification,
       showSceneLowerThird,
       showNowPlaying,
+      showSceneLight,
       lockCameraPositions,
       positions: this.#draftPositions
     };
@@ -442,6 +479,10 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
           <label class="koruja-check-row">
             <input type="checkbox" name="showNowPlaying" ${context.showNowPlaying ? "checked" : ""}>
             <span>${t("KORUJA_DG.Config.ShowNowPlaying")}</span>
+          </label>
+          <label class="koruja-check-row">
+            <input type="checkbox" name="showSceneLight" ${context.showSceneLight ? "checked" : ""}>
+            <span>${t("KORUJA_DG.Config.ShowSceneLight")}</span>
           </label>
           <label class="koruja-check-row">
             <input type="checkbox" name="showChatFeed" ${context.showChatFeed ? "checked" : ""}>
@@ -758,6 +799,7 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
     await game.settings.set(MODULE_ID, "sceneClassification", data.sceneClassification || "EYES ONLY // ACTIVE AO");
     await game.settings.set(MODULE_ID, "showSceneLowerThird", Boolean(data.showSceneLowerThird));
     await game.settings.set(MODULE_ID, "showNowPlaying", Boolean(data.showNowPlaying));
+    await game.settings.set(MODULE_ID, "showSceneLight", Boolean(data.showSceneLight));
     await game.settings.set(MODULE_ID, "lockCameraPositions", Boolean(data.lockCameraPositions));
     await game.settings.set(MODULE_ID, "showOpClock", Boolean(data.showOpClock));
     await game.settings.set(MODULE_ID, "overlayMode", data.overlayMode || "builtin-tactical");
@@ -1117,7 +1159,9 @@ class KorujaStreamHUD {
 
     const showOpClock = game.settings.get(MODULE_ID, "showOpClock");
     const showNowPlaying = game.settings.get(MODULE_ID, "showNowPlaying");
+    const showSceneLight = game.settings.get(MODULE_ID, "showSceneLight");
     const activeTrack = showNowPlaying ? getActivePlaylistTrack() : null;
+    const lightInfo = showSceneLight ? getSceneLightInfo() : null;
 
     const pos = (isRoleplayMode && !lockCameraPositions)
       ? foundry.utils.deepClone(ROLEPLAY_POSITIONS)
@@ -1156,6 +1200,7 @@ class KorujaStreamHUD {
           ${nowPlayingHtml}
         </div>
         <div class="top-right">
+          ${lightInfo ? `<span class="dg-light-pill ${lightInfo.cls}"><i class="${lightInfo.icon}"></i> ${t(lightInfo.key)}</span>` : ""}
           <span class="dg-defcon-pill defcon-${escapeHtml(defconLevel)}">${t(`KORUJA_DG.Defcon.D${defconLevel}`)}</span>
           ${showOpClock ? `<span class="dg-op-clock">${formatTacticalClock()}</span>` : ""}
           ${recBadgeHtml}
@@ -1326,6 +1371,8 @@ class KorujaStreamHUD {
       const isBreakingPoint = san.bp > 0 && san.value <= san.bp;
       const isNearBP = !isBreakingPoint && san.bp > 0 && (san.value - san.bp) <= 5;
       const isWpZero = wp.value === 0;
+      const disorders = getActorDisorders(actor);
+      const hasDisorder = disorders.length > 0;
 
       const flashClass = flashEvents[actor.id] ? `flash-${flashEvents[actor.id]}` : "";
       const barColorClass = (hpPct <= 25 || isCriticalWound) ? "hp-critical" : hpPct <= 50 ? "hp-bloodied" : "hp-healthy";
@@ -1360,6 +1407,7 @@ class KorujaStreamHUD {
         isBreakingPoint ? "is-breaking-point" : "",
         isNearBP ? "is-near-bp" : "",
         isWpZero ? "is-wp-zero" : "",
+        hasDisorder ? "has-disorder" : "",
         flashClass
       ].filter(Boolean).join(" ");
 
@@ -1417,6 +1465,14 @@ class KorujaStreamHUD {
         `;
       }
 
+      let disordersHtml = "";
+      if (hasDisorder) {
+        const pills = disorders.map(dName =>
+          `<span class="dg-disorder-pill" title="${escapeHtml(dName)}"><i class="fa-solid fa-brain"></i> ${escapeHtml(dName)}</span>`
+        ).join("");
+        disordersHtml = `<div class="dg-disorder-tags">${pills}</div>`;
+      }
+
       let conditionsHtml = "";
       if (showConditions && actor.statuses?.size > 0) {
         const badges = Array.from(actor.statuses).slice(0, 5).map(statusId => {
@@ -1448,6 +1504,7 @@ class KorujaStreamHUD {
               ${sanHtml}
               ${wpHtml}
               ${ecgHtml}
+              ${disordersHtml}
               ${conditionsHtml}
             </div>
           </div>
@@ -1859,6 +1916,15 @@ Hooks.once("init", () => {
     onChange: () => KorujaStreamHUD.render()
   });
 
+  game.settings.register(MODULE_ID, "showSceneLight", {
+    name: "KORUJA_DG.Settings.ShowSceneLight",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: true,
+    onChange: () => KorujaStreamHUD.render()
+  });
+
   game.settings.register(MODULE_ID, "operationName", {
     name: "KORUJA_DG.Settings.OperationName",
     scope: "world",
@@ -2100,6 +2166,7 @@ Hooks.on("updateToken", (tokenDoc) => {
 Hooks.on("createActiveEffect", (e) => { if (e.parent?.documentName === "Actor") KorujaStreamHUD.render(); });
 Hooks.on("deleteActiveEffect", (e) => { if (e.parent?.documentName === "Actor") KorujaStreamHUD.render(); });
 Hooks.on("updateActiveEffect", (e) => { if (e.parent?.documentName === "Actor") KorujaStreamHUD.render(); });
+Hooks.on("updateScene", (scene) => { if (scene.active && KorujaStreamHUD.shouldRender()) KorujaStreamHUD.render(); });
 
 Hooks.on("updateCombat", (combat, changed) => {
   KorujaStreamHUD.render();

@@ -67,6 +67,7 @@
       "SceneClassLabel": "Scene Classification",
       "ShowLowerThird": "Show Lower-Third on Scene Change",
       "ShowNowPlaying": "Show Now Playing Ticker",
+      "ShowSceneLight": "Show Scene Lighting Tag",
       "TestLowerThird": "Test Lower-Third",
       "TestBondDegraded": "Test Bond Degradation",
       "ThreatOverlayLabel": "Overlay Threat Mode",
@@ -109,6 +110,9 @@
     },
     "HUD": {
       "LiveRec": "REC",
+      "LightDark": "PITCH BLACK",
+      "LightDim": "DIM LIGHT",
+      "LightBright": "LIT",
       "RecErr": "REC [ERR]",
       "PausedBadge": "PAUSE",
       "PausedTitle": "FEED PAUSED // STAND BY",
