@@ -2193,3 +2193,198 @@ body.koruja-stream-roleplay-mode .dg-pause-overlay {
   color: #94a3b8;
   text-transform: uppercase;
 }
+
+/* --- PAUSE DOSSIER GRID (ZERO SPOILERS) --- */
+.dg-pause-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dg-pause-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--dg-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: #fbbf24;
+  letter-spacing: 1px;
+}
+
+.dg-pause-dossier-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(210px, 1fr));
+  gap: 8px;
+  width: 100%;
+  max-width: 740px;
+  margin: 6px 0 4px;
+}
+
+.dg-pause-agent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 4px;
+  text-align: left;
+}
+
+.dg-pause-agent.kia {
+  opacity: 0.65;
+  border-color: rgba(239, 68, 68, 0.6);
+  background: rgba(69, 10, 10, 0.45);
+}
+
+.dg-pause-agent.crit {
+  border-color: rgba(239, 68, 68, 0.55);
+}
+
+.dg-pause-agent.injured {
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.dg-pause-agent img {
+  width: 34px;
+  height: 34px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex: 0 0 34px;
+}
+
+.dg-pause-agent.kia img {
+  filter: grayscale(100%);
+}
+
+.dg-pause-agent-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dg-pause-agent-name {
+  font-family: var(--dg-font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dg-pause-agent-stats {
+  font-family: var(--dg-font-mono);
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.dg-pause-agent-badge {
+  font-family: var(--dg-font-mono);
+  font-size: 8px;
+  font-weight: 800;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: rgba(52, 211, 153, 0.16);
+  color: #6ee7b7;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+}
+
+.dg-pause-agent.injured .dg-pause-agent-badge {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.dg-pause-agent.crit .dg-pause-agent-badge,
+.dg-pause-agent.kia .dg-pause-agent-badge {
+  background: rgba(239, 68, 68, 0.22);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+/* --- LIVE ECG / BPM MONITOR PER AGENT --- */
+@keyframes dgEcgSweep {
+  0% { stroke-dashoffset: 160; }
+  100% { stroke-dashoffset: 0; }
+}
+
+.dg-ecg-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 14px;
+  margin-top: 2px;
+  padding: 0 4px;
+  background: rgba(4, 8, 12, 0.72);
+  border: 1px solid rgba(52, 211, 153, 0.22);
+  border-radius: 3px;
+}
+
+.dg-ecg-svg {
+  flex: 1;
+  height: 12px;
+  overflow: visible;
+}
+
+.dg-ecg-bg {
+  fill: none;
+  stroke: rgba(52, 211, 153, 0.14);
+  stroke-width: 1.2;
+}
+
+.dg-ecg-line {
+  fill: none;
+  stroke: #34d399;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 48 112;
+  animation: dgEcgSweep 2.2s linear infinite;
+  filter: drop-shadow(0 0 3px rgba(52, 211, 153, 0.7));
+}
+
+.dg-ecg-bpm {
+  font-family: var(--dg-font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  color: #6ee7b7;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+.dg-ecg-row.ecg-elevated {
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.dg-ecg-row.ecg-elevated .dg-ecg-bg { stroke: rgba(245, 158, 11, 0.16); }
+.dg-ecg-row.ecg-elevated .dg-ecg-line {
+  stroke: #f59e0b;
+  animation-duration: 1.15s;
+  filter: drop-shadow(0 0 3px rgba(245, 158, 11, 0.75));
+}
+.dg-ecg-row.ecg-elevated .dg-ecg-bpm { color: #fcd34d; }
+
+.dg-ecg-row.ecg-critical {
+  border-color: rgba(239, 68, 68, 0.55);
+}
+
+.dg-ecg-row.ecg-critical .dg-ecg-bg { stroke: rgba(239, 68, 68, 0.2); }
+.dg-ecg-row.ecg-critical .dg-ecg-line {
+  stroke: #ef4444;
+  animation-duration: 0.7s;
+  filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.85));
+}
+.dg-ecg-row.ecg-critical .dg-ecg-bpm { color: #fca5a5; }
+
+.dg-ecg-row.ecg-flatline {
+  border-color: rgba(239, 68, 68, 0.65);
+  background: rgba(45, 6, 10, 0.6);
+}
+.dg-ecg-row.ecg-flatline .dg-ecg-line {
+  stroke: #ef4444;
+  stroke-dasharray: none;
+  animation: none;
+}
+.dg-ecg-row.ecg-flatline .dg-ecg-bpm { color: #ef4444; }

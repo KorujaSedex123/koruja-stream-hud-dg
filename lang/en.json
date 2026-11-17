@@ -92,6 +92,12 @@
     "Card": {
       "KiaStamp": "KIA // FILE SEALED"
     },
+    "Pause": {
+      "Summary": "ACTIVE: {alive} | KIA: {kia}",
+      "StateOk": "ACTIVE",
+      "StateInjured": "INJURED",
+      "StateCrit": "CRITICAL"
+    },
     "Status": {
       "CLASSIFIED": "CLASSIFIED",
       "COMPROMISED": "COMPROMISED",

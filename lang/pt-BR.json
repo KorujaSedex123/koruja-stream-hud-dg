@@ -92,6 +92,12 @@
     "Card": {
       "KiaStamp": "KIA // ARQUIVO SELADO"
     },
+    "Pause": {
+      "Summary": "EM CAMPO: {alive} | BAIXAS (KIA): {kia}",
+      "StateOk": "OPERACIONAL",
+      "StateInjured": "FERIDO",
+      "StateCrit": "CRÍTICO"
+    },
     "Status": {
       "CLASSIFIED": "CONFIDENCIAL",
       "COMPROMISED": "COMPROMETIDO",

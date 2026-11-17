@@ -1232,6 +1232,29 @@ class KorujaStreamHUD {
       const flashClass = flashEvents[actor.id] ? `flash-${flashEvents[actor.id]}` : "";
       const barColorClass = (hpPct <= 25 || isCriticalWound) ? "hp-critical" : hpPct <= 50 ? "hp-bloodied" : "hp-healthy";
 
+      const isCombatOrThreat = Boolean(game.combat?.started) || threatMode !== "normal";
+      const ecg = isDown
+        ? { bpm: 0, state: "flatline" }
+        : (isCriticalWound || isBreakingPoint)
+          ? { bpm: 168, state: "critical" }
+          : (hpPct < 60 || isNearBP || isCombatOrThreat)
+            ? { bpm: 132, state: "elevated" }
+            : { bpm: 72, state: "calm" };
+
+      const ecgPath = ecg.state === "flatline"
+        ? "M0,9 L120,9"
+        : "M0,9 L26,9 L32,6 L37,9 L44,9 L48,13 L53,1 L58,16 L62,9 L70,9 L76,5 L82,9 L120,9";
+
+      const ecgHtml = `
+        <div class="dg-ecg-row ecg-${ecg.state}" title="ECG ${ecg.bpm} BPM">
+          <svg class="dg-ecg-svg" viewBox="0 0 120 18" preserveAspectRatio="none">
+            <path class="dg-ecg-bg" d="${ecgPath}" />
+            <path class="dg-ecg-line" d="${ecgPath}" />
+          </svg>
+          <span class="dg-ecg-bpm">${String(ecg.bpm).padStart(2, "0")} BPM</span>
+        </div>
+      `;
+
       const stateClasses = [
         isTurn ? "is-active-turn" : "",
         isDown ? "is-down" : "",
@@ -1326,6 +1349,7 @@ class KorujaStreamHUD {
               ${hpHtml}
               ${sanHtml}
               ${wpHtml}
+              ${ecgHtml}
               ${conditionsHtml}
             </div>
           </div>
@@ -1406,15 +1430,51 @@ class KorujaStreamHUD {
       `;
     }
 
-    const pauseOverlayHtml = isPaused ? `
-      <div id="dg-pause-overlay" class="dg-pause-overlay">
-        <div class="dg-pause-card">
-          <div class="dg-pause-icon"><i class="fa-solid fa-pause"></i></div>
-          <div class="dg-pause-title">${t("KORUJA_DG.HUD.PausedTitle")}</div>
-          <div class="dg-pause-sub">${t("KORUJA_DG.HUD.PausedSub")}</div>
+    let pauseOverlayHtml = "";
+    if (isPaused) {
+      let aliveCount = 0;
+      let kiaCount = 0;
+      const dossierCards = actors.map(actor => {
+        const hp = getActorHealth(actor);
+        const san = getActorSanity(actor);
+        const isKia = hp.value === 0;
+        const isCrit = hp.value > 0 && (hp.value <= 2 || (san.bp > 0 && san.value <= san.bp));
+        const isInjured = !isKia && !isCrit && hp.value < hp.max;
+        if (isKia) kiaCount++; else aliveCount++;
+        const stateCls = isKia ? "kia" : isCrit ? "crit" : isInjured ? "injured" : "ok";
+        const stateLabel = isKia ? "KIA" : isCrit ? t("KORUJA_DG.Pause.StateCrit") : isInjured ? t("KORUJA_DG.Pause.StateInjured") : t("KORUJA_DG.Pause.StateOk");
+        return `
+          <div class="dg-pause-agent ${stateCls}">
+            <img src="${escapeHtml(actor.img)}" alt="${escapeHtml(actor.name)}">
+            <div class="dg-pause-agent-info">
+              <div class="dg-pause-agent-name">${escapeHtml(actor.name)}</div>
+              <div class="dg-pause-agent-stats">HP ${hp.value}/${hp.max} · SAN ${san.value}</div>
+            </div>
+            <span class="dg-pause-agent-badge">${stateLabel}</span>
+          </div>
+        `;
+      }).join("");
+
+      pauseOverlayHtml = `
+        <div id="dg-pause-overlay" class="dg-pause-overlay">
+          <div class="dg-pause-card">
+            <div class="dg-pause-header">
+              <span class="dg-pause-icon"><i class="fa-solid fa-pause"></i></span>
+              <div class="dg-pause-title">${t("KORUJA_DG.HUD.PausedTitle")}</div>
+            </div>
+            <div class="dg-pause-meta">
+              <span>${escapeHtml(operationName.toUpperCase())}</span>
+              <span>•</span>
+              <span>${t(`KORUJA_DG.Defcon.D${defconLevel}`)}</span>
+              <span>•</span>
+              <span>${t("KORUJA_DG.Pause.Summary", { alive: aliveCount, kia: kiaCount })}</span>
+            </div>
+            ${dossierCards ? `<div class="dg-pause-dossier-grid">${dossierCards}</div>` : ""}
+            <div class="dg-pause-sub">${t("KORUJA_DG.HUD.PausedSub")}</div>
+          </div>
         </div>
-      </div>
-    ` : "";
+      `;
+    }
 
     this.container.innerHTML = `${backdropHtml}${threatOverlayHtml}${pauseOverlayHtml}${tapeHtml}${bossHtml}${cardsHtml}${chatHtml}${combatHtml}`;
     if (this.epicBannerEl) this.container.appendChild(this.epicBannerEl);
