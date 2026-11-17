@@ -788,6 +788,7 @@ class KorujaStreamHUD {
   static lastBossHpPct = null;
   static threatOverlayOverride = null;
   static monsterCardOverride = null;
+  static tapeBannerOverride = null;
 
   static init() {
     if (!this.shouldRender()) {
@@ -829,6 +830,9 @@ class KorujaStreamHUD {
           this.render();
         } else if (ev.data?.action === "set-monster-card") {
           this.monsterCardOverride = ev.data.card || { mode: "none", name: "", img: "" };
+          this.render();
+        } else if (ev.data?.action === "set-tape-banner") {
+          this.tapeBannerOverride = ev.data.tape || { active: false, title: "", subtitle: "" };
           this.render();
         }
       };
@@ -1379,7 +1383,28 @@ class KorujaStreamHUD {
       `;
     }
 
-    this.container.innerHTML = `${backdropHtml}${threatOverlayHtml}${bossHtml}${cardsHtml}${chatHtml}${combatHtml}`;
+    const activeTape = this.tapeBannerOverride || game.settings.get(MODULE_ID, "activeTapeBanner") || { active: false, title: "", subtitle: "" };
+    let tapeHtml = "";
+    if (activeTape?.active) {
+      tapeHtml = `
+        <div id="dg-tape-banner" class="dg-tape-banner">
+          <div class="dg-tape-reel"><i class="fa-solid fa-cassette-tape"></i></div>
+          <div class="dg-tape-meta">
+            <div class="dg-tape-status"><span class="dg-tape-play-dot"></span>▶ PLAY // AUDIO LOG</div>
+            <div class="dg-tape-title">${escapeHtml(activeTape.title || "FITA CASSETE")}</div>
+            ${activeTape.subtitle ? `<div class="dg-tape-sub">${escapeHtml(activeTape.subtitle)}</div>` : ""}
+          </div>
+          <div class="dg-eq-bars dg-tape-eq">
+            <span class="dg-eq-bar"></span>
+            <span class="dg-eq-bar"></span>
+            <span class="dg-eq-bar"></span>
+            <span class="dg-eq-bar"></span>
+          </div>
+        </div>
+      `;
+    }
+
+    this.container.innerHTML = `${backdropHtml}${threatOverlayHtml}${tapeHtml}${bossHtml}${cardsHtml}${chatHtml}${combatHtml}`;
     if (this.epicBannerEl) this.container.appendChild(this.epicBannerEl);
     if (this.lowerThirdEl) this.container.appendChild(this.lowerThirdEl);
     if (this.spotlightEl) this.container.appendChild(this.spotlightEl);
@@ -1564,6 +1589,17 @@ Hooks.once("init", () => {
     }
   });
 
+  game.settings.register(MODULE_ID, "activeTapeBanner", {
+    scope: "world",
+    config: false,
+    type: Object,
+    default: { active: false, title: "", subtitle: "" },
+    onChange: () => {
+      KorujaStreamHUD.tapeBannerOverride = null;
+      KorujaStreamHUD.render();
+    }
+  });
+
   game.settings.register(MODULE_ID, "showSceneLowerThird", {
     name: "KORUJA_DG.Settings.ShowSceneLowerThird",
     scope: "world",
@@ -1690,6 +1726,21 @@ Hooks.once("init", () => {
       }
       if (game.user?.isGM) {
         await game.settings.set(MODULE_ID, "activeMonsterCard", card);
+      }
+    },
+    setTapeBanner: async (active = false, title = "", subtitle = "") => {
+      const tape = {
+        active: Boolean(active),
+        title: String(title || ""),
+        subtitle: String(subtitle || "")
+      };
+      if (typeof BroadcastChannel !== "undefined") {
+        const ch = new BroadcastChannel(MODULE_ID);
+        ch.postMessage({ action: "set-tape-banner", tape });
+        ch.close();
+      }
+      if (game.user?.isGM) {
+        await game.settings.set(MODULE_ID, "activeTapeBanner", tape);
       }
     },
     triggerLowerThird: (sceneName) => KorujaStreamHUD.showSceneLowerThird(sceneName)
