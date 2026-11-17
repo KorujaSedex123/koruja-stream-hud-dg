@@ -72,7 +72,11 @@
       "ThreatOverlayLabel": "Overlay Threat Mode",
       "ThreatNormal": "Normal (Default)",
       "ThreatStalker": "Stalker (Crimson / Glitch)",
-      "ThreatBlind": "Blind Listener (Sonar / Static)"
+      "ThreatBlind": "Blind Listener (Sonar / Static)",
+      "StalkerGifLabel": "Stalker GIF (Monster 1)",
+      "BlindGifLabel": "Blind Listener GIF (Monster 2)",
+      "CaretakerGifLabel": "Caretaker Silas GIF (Monster 3)",
+      "GifPlaceholder": "Browse monster .gif in Foundry..."
     },
     "ThreatMode": {
       "StalkerStrip": "HOSTILE CONTACT // STALKER DETECTED",
@@ -96,6 +100,7 @@
     },
     "HUD": {
       "LiveRec": "REC",
+      "ThreatActive": "ACTIVE THREAT",
       "RoleplayTag": "BODYCAM FEED // RP",
       "TurnBadge": "TURN",
       "CriticalWound": "CRITICAL WOUND",

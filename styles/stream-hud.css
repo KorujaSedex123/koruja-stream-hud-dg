@@ -1918,3 +1918,83 @@ body.dg-threat-blind .dg-threat-status-strip {
   color: #a5f3fc;
   box-shadow: 0 0 18px rgba(34, 211, 238, 0.45);
 }
+
+/* --- ACTIVE MONSTER GIF BOX (replaces idle initiative box) --- */
+.koruja-combat-box.has-monster-card {
+  padding: 0;
+  height: 220px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: #050709;
+  border: 1px solid rgba(239, 68, 68, 0.72);
+  box-shadow: 0 0 22px rgba(239, 68, 68, 0.35), inset 0 0 16px rgba(0, 0, 0, 0.7);
+}
+
+.koruja-combat-box.has-monster-card.monster-blind {
+  border-color: rgba(34, 211, 238, 0.72);
+  box-shadow: 0 0 22px rgba(34, 211, 238, 0.35), inset 0 0 16px rgba(0, 0, 0, 0.7);
+}
+
+.koruja-combat-box.has-monster-card.monster-caretaker {
+  border-color: rgba(245, 158, 11, 0.72);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.3), inset 0 0 16px rgba(0, 0, 0, 0.7);
+}
+
+.dg-monster-box-gif {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+}
+
+.dg-monster-box-overlay {
+  position: relative;
+  z-index: 2;
+  padding: 18px 12px 9px;
+  background: linear-gradient(180deg, transparent 0%, rgba(5, 7, 10, 0.92) 70%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.dg-monster-box-tag {
+  font-family: var(--dg-font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: #fca5a5;
+}
+
+.koruja-combat-box.monster-blind .dg-monster-box-tag {
+  color: #67e8f9;
+}
+
+.koruja-combat-box.monster-caretaker .dg-monster-box-tag {
+  color: #fcd34d;
+}
+
+.dg-monster-box-name {
+  font-family: var(--dg-font-mono);
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #ffffff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.95);
+}
+
+.koruja-gif-browse-btn {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(52, 211, 153, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  color: #34d399;
+  cursor: pointer;
+}

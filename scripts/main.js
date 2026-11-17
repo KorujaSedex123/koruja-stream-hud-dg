@@ -225,6 +225,9 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
     const vdoRoomName = game.settings.get(MODULE_ID, "vdoRoomName") || "DeltaGreenOp";
     const defconLevel = game.settings.get(MODULE_ID, "defconLevel") || "3";
     const threatOverlayMode = game.settings.get(MODULE_ID, "threatOverlayMode") || "normal";
+    const stalkerGif = game.settings.get(MODULE_ID, "stalkerGif") || "";
+    const blindGif = game.settings.get(MODULE_ID, "blindGif") || "";
+    const caretakerGif = game.settings.get(MODULE_ID, "caretakerGif") || "";
     const sceneClassification = game.settings.get(MODULE_ID, "sceneClassification") || "EYES ONLY // ACTIVE AO";
     const showSceneLowerThird = game.settings.get(MODULE_ID, "showSceneLowerThird");
     const showNowPlaying = game.settings.get(MODULE_ID, "showNowPlaying");
@@ -261,6 +264,9 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
       vdoRoomName,
       defconLevel,
       threatOverlayMode,
+      stalkerGif,
+      blindGif,
+      caretakerGif,
       sceneClassification,
       showSceneLowerThird,
       showNowPlaying,
@@ -376,6 +382,27 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
               <option value="stalker" ${context.threatOverlayMode === "stalker" ? "selected" : ""}>${t("KORUJA_DG.Config.ThreatStalker")}</option>
               <option value="blind" ${context.threatOverlayMode === "blind" ? "selected" : ""}>${t("KORUJA_DG.Config.ThreatBlind")}</option>
             </select>
+          </div>
+          <div class="form-group stacked">
+            <label>${t("KORUJA_DG.Config.StalkerGifLabel")}</label>
+            <div class="koruja-filepicker-row">
+              <input type="text" name="stalkerGif" id="koruja-stalker-gif-input" value="${escapeHtml(context.stalkerGif)}" placeholder="${t("KORUJA_DG.Config.GifPlaceholder")}">
+              <button type="button" class="koruja-gif-browse-btn" data-target="#koruja-stalker-gif-input" title="${t("KORUJA_DG.Config.BrowseImg")}"><i class="fa-solid fa-file-import"></i></button>
+            </div>
+          </div>
+          <div class="form-group stacked">
+            <label>${t("KORUJA_DG.Config.BlindGifLabel")}</label>
+            <div class="koruja-filepicker-row">
+              <input type="text" name="blindGif" id="koruja-blind-gif-input" value="${escapeHtml(context.blindGif)}" placeholder="${t("KORUJA_DG.Config.GifPlaceholder")}">
+              <button type="button" class="koruja-gif-browse-btn" data-target="#koruja-blind-gif-input" title="${t("KORUJA_DG.Config.BrowseImg")}"><i class="fa-solid fa-file-import"></i></button>
+            </div>
+          </div>
+          <div class="form-group stacked">
+            <label>${t("KORUJA_DG.Config.CaretakerGifLabel")}</label>
+            <div class="koruja-filepicker-row">
+              <input type="text" name="caretakerGif" id="koruja-caretaker-gif-input" value="${escapeHtml(context.caretakerGif)}" placeholder="${t("KORUJA_DG.Config.GifPlaceholder")}">
+              <button type="button" class="koruja-gif-browse-btn" data-target="#koruja-caretaker-gif-input" title="${t("KORUJA_DG.Config.BrowseImg")}"><i class="fa-solid fa-file-import"></i></button>
+            </div>
           </div>
           <div class="form-group stacked">
             <label>${t("KORUJA_DG.Config.SceneClassLabel")}</label>
@@ -615,6 +642,21 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
       }).browse();
     });
 
+    container.querySelectorAll(".koruja-gif-browse-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const targetInput = container.querySelector(btn.dataset.target);
+        if (!targetInput) return;
+        const FP = foundry.applications?.apps?.FilePicker?.implementation || FilePicker;
+        new FP({
+          type: "image",
+          current: targetInput.value || "",
+          callback: (path) => {
+            targetInput.value = path;
+          }
+        }).browse();
+      });
+    });
+
     resetBtn?.addEventListener("click", () => {
       this.#draftPositions = foundry.utils.deepClone(DEFAULT_POSITIONS);
       hiddenJson.value = JSON.stringify(this.#draftPositions);
@@ -704,6 +746,9 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
     await game.settings.set(MODULE_ID, "agencyStatus", data.agencyStatus || "CLASSIFIED");
     await game.settings.set(MODULE_ID, "defconLevel", data.defconLevel || "3");
     await game.settings.set(MODULE_ID, "threatOverlayMode", data.threatOverlayMode || "normal");
+    await game.settings.set(MODULE_ID, "stalkerGif", String(data.stalkerGif || "").trim());
+    await game.settings.set(MODULE_ID, "blindGif", String(data.blindGif || "").trim());
+    await game.settings.set(MODULE_ID, "caretakerGif", String(data.caretakerGif || "").trim());
     await game.settings.set(MODULE_ID, "sceneClassification", data.sceneClassification || "EYES ONLY // ACTIVE AO");
     await game.settings.set(MODULE_ID, "showSceneLowerThird", Boolean(data.showSceneLowerThird));
     await game.settings.set(MODULE_ID, "showNowPlaying", Boolean(data.showNowPlaying));
@@ -742,6 +787,7 @@ class KorujaStreamHUD {
   static clockInterval = null;
   static lastBossHpPct = null;
   static threatOverlayOverride = null;
+  static monsterCardOverride = null;
 
   static init() {
     if (!this.shouldRender()) {
@@ -780,6 +826,9 @@ class KorujaStreamHUD {
           this.showSceneLowerThird(ev.data.sceneName);
         } else if (ev.data?.action === "set-threat-overlay") {
           this.threatOverlayOverride = ev.data.mode || "normal";
+          this.render();
+        } else if (ev.data?.action === "set-monster-card") {
+          this.monsterCardOverride = ev.data.card || { mode: "none", name: "", img: "" };
           this.render();
         }
       };
@@ -1296,10 +1345,21 @@ class KorujaStreamHUD {
       `;
     }
 
-    // 5. Combat / Turn Box
+    // 5. Combat / Turn Box (or Active Monster GIF Card when triggered)
     let combatHtml = "";
-    if (showCombatBox) {
-      const combatCoords = pos.combat || DEFAULT_POSITIONS.combat;
+    const activeMonster = this.monsterCardOverride || game.settings.get(MODULE_ID, "activeMonsterCard") || { mode: "none", name: "", img: "" };
+    const combatCoords = pos.combat || DEFAULT_POSITIONS.combat;
+    if (activeMonster?.mode && activeMonster.mode !== "none" && activeMonster.img) {
+      combatHtml = `
+        <div class="koruja-combat-box has-monster-card monster-${escapeHtml(activeMonster.mode)}" style="left: ${combatCoords.x}px; top: ${combatCoords.y}px;">
+          <img class="dg-monster-box-gif" src="${escapeHtml(activeMonster.img)}" alt="${escapeHtml(activeMonster.name || "")}">
+          <div class="dg-monster-box-overlay">
+            <span class="dg-monster-box-tag">${t("KORUJA_DG.HUD.ThreatActive")}</span>
+            <span class="dg-monster-box-name">${escapeHtml(activeMonster.name || "")}</span>
+          </div>
+        </div>
+      `;
+    } else if (showCombatBox) {
       const roundText = game.combat?.started ? `${t("KORUJA_DG.HUD.Round")} ${String(game.combat.round).padStart(2, "0")}` : t("KORUJA_DG.HUD.Exploration");
       const turnText = game.combat?.started && activeCombatant ? `${t("KORUJA_DG.HUD.TurnOf")}: ${escapeHtml(activeCombatant.name)}` : t("KORUJA_DG.HUD.OutOfCombat");
       combatHtml = `
@@ -1464,6 +1524,38 @@ Hooks.once("init", () => {
     }
   });
 
+  game.settings.register(MODULE_ID, "stalkerGif", {
+    scope: "world",
+    config: false,
+    type: String,
+    default: ""
+  });
+
+  game.settings.register(MODULE_ID, "blindGif", {
+    scope: "world",
+    config: false,
+    type: String,
+    default: ""
+  });
+
+  game.settings.register(MODULE_ID, "caretakerGif", {
+    scope: "world",
+    config: false,
+    type: String,
+    default: ""
+  });
+
+  game.settings.register(MODULE_ID, "activeMonsterCard", {
+    scope: "world",
+    config: false,
+    type: Object,
+    default: { mode: "none", name: "", img: "" },
+    onChange: () => {
+      KorujaStreamHUD.monsterCardOverride = null;
+      KorujaStreamHUD.render();
+    }
+  });
+
   game.settings.register(MODULE_ID, "showSceneLowerThird", {
     name: "KORUJA_DG.Settings.ShowSceneLowerThird",
     scope: "world",
@@ -1575,6 +1667,21 @@ Hooks.once("init", () => {
       }
       if (game.user?.isGM) {
         await game.settings.set(MODULE_ID, "threatOverlayMode", normalized);
+      }
+    },
+    setMonsterCard: async (mode = "none", name = "", img = "") => {
+      const card = {
+        mode: ["none", "stalker", "blind", "caretaker"].includes(mode) ? mode : "none",
+        name: String(name || ""),
+        img: String(img || "")
+      };
+      if (typeof BroadcastChannel !== "undefined") {
+        const ch = new BroadcastChannel(MODULE_ID);
+        ch.postMessage({ action: "set-monster-card", card });
+        ch.close();
+      }
+      if (game.user?.isGM) {
+        await game.settings.set(MODULE_ID, "activeMonsterCard", card);
       }
     },
     triggerLowerThird: (sceneName) => KorujaStreamHUD.showSceneLowerThird(sceneName)

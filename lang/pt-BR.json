@@ -72,7 +72,11 @@
       "ThreatOverlayLabel": "Modo de Ameaça no Overlay",
       "ThreatNormal": "Normal (Padrão)",
       "ThreatStalker": "Perseguidor (Carmesim / Glitch)",
-      "ThreatBlind": "Ouvinte Cego (Sonar / Estática)"
+      "ThreatBlind": "Ouvinte Cego (Sonar / Estática)",
+      "StalkerGifLabel": "GIF do Perseguidor (Monstro 1)",
+      "BlindGifLabel": "GIF do Ouvinte Cego (Monstro 2)",
+      "CaretakerGifLabel": "GIF do Caseiro Silas (Monstro 3)",
+      "GifPlaceholder": "Selecione o .gif do monstro no Foundry..."
     },
     "ThreatMode": {
       "StalkerStrip": "CONTATO HOSTIL // PERSEGUIDOR DETECTADO",
@@ -96,6 +100,7 @@
     },
     "HUD": {
       "LiveRec": "REC",
+      "ThreatActive": "AMEAÇA EM CENA",
       "RoleplayTag": "TRANSMISSÃO BODYCAM // RP",
       "TurnBadge": "TURNO",
       "CriticalWound": "FERIMENTO CRÍTICO",
