@@ -1350,12 +1350,20 @@ class KorujaStreamHUD {
     const activeMonster = this.monsterCardOverride || game.settings.get(MODULE_ID, "activeMonsterCard") || { mode: "none", name: "", img: "" };
     const combatCoords = pos.combat || DEFAULT_POSITIONS.combat;
     if (activeMonster?.mode && activeMonster.mode !== "none" && activeMonster.img) {
+      const subMap = {
+        stalker: t("KORUJA_DG.ThreatMode.StalkerStrip"),
+        blind: t("KORUJA_DG.ThreatMode.BlindStrip"),
+        caretaker: t("KORUJA_DG.HUD.LiveRec")
+      };
       combatHtml = `
         <div class="koruja-combat-box has-monster-card monster-${escapeHtml(activeMonster.mode)}" style="left: ${combatCoords.x}px; top: ${combatCoords.y}px;">
-          <img class="dg-monster-box-gif" src="${escapeHtml(activeMonster.img)}" alt="${escapeHtml(activeMonster.name || "")}">
+          <div class="dg-monster-box-media">
+            <img class="dg-monster-box-gif" src="${escapeHtml(activeMonster.img)}" alt="${escapeHtml(activeMonster.name || "")}">
+          </div>
           <div class="dg-monster-box-overlay">
             <span class="dg-monster-box-tag">${t("KORUJA_DG.HUD.ThreatActive")}</span>
             <span class="dg-monster-box-name">${escapeHtml(activeMonster.name || "")}</span>
+            <span class="dg-monster-box-sub">${escapeHtml(subMap[activeMonster.mode] || "")}</span>
           </div>
         </div>
       `;
