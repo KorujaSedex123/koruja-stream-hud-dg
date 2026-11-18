@@ -45,7 +45,12 @@ function getEffectiveOverlayMode() {
   return game.settings.get(MODULE_ID, "overlayMode") || "builtin-tactical";
 }
 
+function isStreamDeckMode() {
+  return new URLSearchParams(window.location.search).get("streamdeck") === "1";
+}
+
 function isStreamMode() {
+  if (isStreamDeckMode()) return false;
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get("streamhud") === "1") return true;
   if (game.view === "stream") return true;
@@ -570,6 +575,7 @@ class StreamPartyConfigApp extends foundry.applications.api.ApplicationV2 {
             <label><i class="fa-solid fa-link"></i> ${t("KORUJA_DG.Config.ObsLinksLabel")}</label>
             <input type="text" readonly value="${streamUrl}" onclick="this.select(); navigator.clipboard.writeText(this.value); ui.notifications.info('URL copied!');">
             <input type="text" readonly value="${streamUrl}&mode=rp" style="margin-top:3px;" onclick="this.select(); navigator.clipboard.writeText(this.value); ui.notifications.info('Roleplay URL copied!');">
+            <input type="text" readonly value="${window.location.origin}/?streamdeck=1" style="margin-top:3px;" onclick="this.select(); navigator.clipboard.writeText(this.value); ui.notifications.info('Mobile Stream Deck URL copied!');">
           </div>
         </div>
       </div>
@@ -2545,3 +2551,235 @@ class KorujaPuzzleManager {
 }
 
 Hooks.once("ready", () => KorujaPuzzleManager.init());
+
+/**
+ * Mobile / Touch Stream Deck Controller (?streamdeck=1)
+ * Lets GM/Assistant GM trigger monsters, tapes, soundboard, pause, DEFCON, and overlay modes from a phone.
+ */
+class KorujaStreamDeck {
+  static root = null;
+
+  static init() {
+    if (!isStreamDeckMode()) return;
+    if (!game.user?.isGM) {
+      ui.notifications.warn("Stream Deck (?streamdeck=1) requer conta GM ou Assistant GM.");
+      return;
+    }
+    document.body.classList.add("dg-streamdeck-mode");
+    if (!this.root) {
+      this.root = document.createElement("div");
+      this.root.id = "dg-streamdeck-app";
+      document.body.appendChild(this.root);
+    }
+    this.render();
+  }
+
+  static async stopAllPlaylists() {
+    for (const pl of game.playlists?.contents || []) {
+      if (pl.playing) await pl.stopAll();
+    }
+  }
+
+  static async playMatching(targetName) {
+    if (!targetName) return;
+    const needle = targetName.trim().toLowerCase();
+    const playlists = game.playlists?.contents || [];
+    const exactPl = playlists.find(p => p.name.trim().toLowerCase() === needle)
+      || playlists.find(p => p.name.trim().toLowerCase().includes(needle));
+    if (exactPl) {
+      await exactPl.playAll();
+      return;
+    }
+    for (const pl of playlists) {
+      const sound = pl.sounds?.find(s => s.name.trim().toLowerCase().includes(needle));
+      if (sound) {
+        await pl.playSound(sound);
+        return;
+      }
+    }
+  }
+
+  static async playSfxByName(name) {
+    const needle = name.trim().toLowerCase();
+    for (const pl of game.playlists?.contents || []) {
+      const sound = pl.sounds?.find(s => s.name.trim().toLowerCase().includes(needle));
+      if (sound?.path) {
+        await foundry.audio.AudioHelper.play({ src: sound.path, volume: 1.0, autoplay: true, loop: false }, true);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static async triggerMonster(choice) {
+    const playlists = { ambient: "Ambiente", stalker: "Chase Pulse Faster", blind: "Scp X2x", caretaker: "Silas" };
+    const sfx = { stalker: "Susto Perseguidor", blind: "Susto Cego", caretaker: "Susto Silas" };
+    const labels = { stalker: "O Perseguidor", blind: "O Ouvinte Cego", caretaker: "O Caseiro Silas" };
+    const gifKeys = { stalker: "stalkerGif", blind: "blindGif", caretaker: "caretakerGif" };
+    const threatMap = { stalker: "stalker", blind: "blind", caretaker: "normal", ambient: "normal" };
+
+    await this.stopAllPlaylists();
+    await this.playMatching(playlists[choice]);
+    await game.korujaStreamHudDG?.setThreatOverlay(threatMap[choice]);
+
+    if (choice === "ambient") {
+      await game.korujaStreamHudDG?.setMonsterCard("none", "", "");
+    } else {
+      await this.playSfxByName(sfx[choice]);
+      const gifPath = (game.settings.get(MODULE_ID, gifKeys[choice]) || "").trim();
+      const title = labels[choice];
+      if (gifPath) {
+        await game.korujaStreamHudDG?.setMonsterCard(choice, title, gifPath);
+        const IP = foundry.applications?.apps?.ImagePopout || ImagePopout;
+        const pop = new IP({ src: gifPath, window: { title } });
+        await pop.render(true);
+        if (typeof pop.shareImage === "function") pop.shareImage();
+      }
+    }
+    this.render();
+  }
+
+  static async triggerTape(choice) {
+    const patterns = {
+      tape1: ["fita cassete #1", "fita #1", "fita 1"],
+      tape2: ["fita cassete #2", "fita #2", "fita 2"],
+      tape3: ["fita cassete #3", "fita #3", "fita 3"]
+    };
+    const meta = {
+      tape1: { title: "FITA CASSETE #1", subtitle: "GRAVAÇÃO DA COZINHA // ÁUDIO ORIGINAL" },
+      tape2: { title: "FITA CASSETE #2", subtitle: "REGISTRO DO PORÃO // ÁUDIO ORIGINAL" },
+      tape3: { title: "FITA CASSETE #3", subtitle: "O ÚLTIMO ÁUDIO DE HELENA" }
+    };
+    await this.stopAllPlaylists();
+    if (choice === "stop") {
+      await game.korujaStreamHudDG?.setTapeBanner(false, "", "");
+      await this.playMatching("Ambiente");
+      return;
+    }
+    for (const pl of game.playlists?.contents || []) {
+      for (const sound of pl.sounds?.contents || []) {
+        const nm = sound.name.trim().toLowerCase();
+        if (patterns[choice].some(p => nm.includes(p))) {
+          await pl.playSound(sound);
+          await game.korujaStreamHudDG?.setTapeBanner(true, meta[choice].title, meta[choice].subtitle);
+          return;
+        }
+      }
+    }
+    ui.notifications.warn("Fita não encontrada nas Playlists.");
+  }
+
+  static render() {
+    if (!this.root || !isStreamDeckMode()) return;
+    const mode = game.settings.get(MODULE_ID, "overlayMode") || "builtin-tactical";
+    const defcon = String(game.settings.get(MODULE_ID, "defconLevel") || "3");
+    const isPaused = Boolean(game.paused);
+
+    const sbPlaylist = (game.playlists?.contents || []).find(
+      p => p.name.trim().toLowerCase().includes("soundboard") || p.name.trim().toLowerCase().includes("efeitos")
+    );
+    const sbButtons = sbPlaylist?.sounds?.contents?.map(s =>
+      `<button type="button" class="sd-btn sd-sfx" data-sfx-id="${s.id}" data-pl-id="${sbPlaylist.id}"><i class="fa-solid fa-volume-high"></i><span>${escapeHtml(s.name)}</span></button>`
+    ).join("") || `<div class="sd-empty">Crie uma playlist "Soundboard" para listar efeitos aqui.</div>`;
+
+    this.root.innerHTML = `
+      <div class="sd-header">
+        <span><i class="fa-solid fa-mobile-screen-button"></i> CASA JUNO // STREAM DECK</span>
+        <span class="sd-badge">${isPaused ? "PAUSADO" : "NO AR"}</span>
+      </div>
+
+      <div class="sd-section">
+        <div class="sd-label">OVERLAY & CONTROLE</div>
+        <div class="sd-grid">
+          <button type="button" class="sd-btn ${mode === "builtin-tactical" ? "is-active" : ""}" data-act="mode-tactical"><i class="fa-solid fa-map"></i><span>TÁTICO</span></button>
+          <button type="button" class="sd-btn ${mode === "builtin-roleplay" ? "is-active" : ""}" data-act="mode-rp"><i class="fa-solid fa-users"></i><span>SOMENTE RP</span></button>
+          <button type="button" class="sd-btn ${isPaused ? "sd-warn is-active" : ""}" data-act="toggle-pause"><i class="fa-solid fa-pause"></i><span>${isPaused ? "RETOMAR" : "PAUSAR"}</span></button>
+        </div>
+      </div>
+
+      <div class="sd-section">
+        <div class="sd-label">DEFCON (${defcon})</div>
+        <div class="sd-grid sd-grid-5">
+          ${[1,2,3,4,5].map(n => `<button type="button" class="sd-btn sd-defcon-${n} ${defcon === String(n) ? "is-active" : ""}" data-defcon="${n}"><span>D${n}</span></button>`).join("")}
+        </div>
+      </div>
+
+      <div class="sd-section">
+        <div class="sd-label">AMEAÇAS & MONSTROS</div>
+        <div class="sd-grid">
+          <button type="button" class="sd-btn sd-danger" data-monster="stalker"><i class="fa-solid fa-skull"></i><span>PERSEGUIDOR</span></button>
+          <button type="button" class="sd-btn sd-cyan" data-monster="blind"><i class="fa-solid fa-ear-listen"></i><span>OUVINTE CEGO</span></button>
+          <button type="button" class="sd-btn sd-warn" data-monster="caretaker"><i class="fa-solid fa-user-secret"></i><span>CASEIRO SILAS</span></button>
+          <button type="button" class="sd-btn" data-monster="ambient"><i class="fa-solid fa-snowflake"></i><span>NORMAL</span></button>
+        </div>
+      </div>
+
+      <div class="sd-section">
+        <div class="sd-label">FITAS CASSETE (WALKMAN)</div>
+        <div class="sd-grid">
+          <button type="button" class="sd-btn sd-warn" data-tape="tape1"><i class="fa-solid fa-cassette-tape"></i><span>FITA #1</span></button>
+          <button type="button" class="sd-btn sd-warn" data-tape="tape2"><i class="fa-solid fa-cassette-tape"></i><span>FITA #2</span></button>
+          <button type="button" class="sd-btn sd-warn" data-tape="tape3"><i class="fa-solid fa-cassette-tape"></i><span>FITA #3</span></button>
+          <button type="button" class="sd-btn" data-tape="stop"><i class="fa-solid fa-stop"></i><span>PARAR FITA</span></button>
+        </div>
+      </div>
+
+      <div class="sd-section">
+        <div class="sd-label">ENIGMAS AO VIVO</div>
+        <div class="sd-grid">
+          <button type="button" class="sd-btn sd-cyan" data-act="open-puzzle"><i class="fa-solid fa-puzzle-piece"></i><span>ABRIR PUZZLE</span></button>
+          <button type="button" class="sd-btn" data-act="close-puzzle"><i class="fa-solid fa-xmark"></i><span>FECHAR PUZZLE</span></button>
+        </div>
+      </div>
+
+      <div class="sd-section">
+        <div class="sd-label">SOUNDBOARD RÁPIDO</div>
+        <div class="sd-grid">${sbButtons}</div>
+      </div>
+    `;
+
+    this.root.querySelector("[data-act='mode-tactical']")?.addEventListener("click", async () => {
+      await game.korujaStreamHudDG?.setMode("builtin-tactical");
+      this.render();
+    });
+    this.root.querySelector("[data-act='mode-rp']")?.addEventListener("click", async () => {
+      await game.korujaStreamHudDG?.setMode("builtin-roleplay");
+      this.render();
+    });
+    this.root.querySelector("[data-act='toggle-pause']")?.addEventListener("click", () => {
+      game.togglePause(!game.paused, { broadcast: true });
+    });
+    this.root.querySelector("[data-act='open-puzzle']")?.addEventListener("click", () => {
+      game.korujaStreamHudDG?.openPuzzleSelector();
+    });
+    this.root.querySelector("[data-act='close-puzzle']")?.addEventListener("click", () => {
+      game.korujaStreamHudDG?.closePuzzle();
+    });
+    this.root.querySelectorAll("[data-defcon]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        await game.korujaStreamHudDG?.setDefcon(btn.dataset.defcon);
+        this.render();
+      });
+    });
+    this.root.querySelectorAll("[data-monster]").forEach(btn => {
+      btn.addEventListener("click", () => this.triggerMonster(btn.dataset.monster));
+    });
+    this.root.querySelectorAll("[data-tape]").forEach(btn => {
+      btn.addEventListener("click", () => this.triggerTape(btn.dataset.tape));
+    });
+    this.root.querySelectorAll("[data-sfx-id]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const pl = game.playlists.get(btn.dataset.plId);
+        const s = pl?.sounds?.get(btn.dataset.sfxId);
+        if (s?.path) {
+          await foundry.audio.AudioHelper.play({ src: s.path, volume: s.volume ?? 0.9, autoplay: true, loop: false }, true);
+        }
+      });
+    });
+  }
+}
+
+Hooks.once("ready", () => KorujaStreamDeck.init());
+Hooks.on("pauseGame", () => KorujaStreamDeck.render());
+Hooks.on("updatePlaylist", () => KorujaStreamDeck.render());
+Hooks.on("updatePlaylistSound", () => KorujaStreamDeck.render());

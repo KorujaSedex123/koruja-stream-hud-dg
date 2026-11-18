@@ -2887,3 +2887,115 @@ body.koruja-stream-mode-active #dice-box-canvas {
   visibility: visible !important;
   opacity: 1 !important;
 }
+
+/* --- MOBILE / TOUCH STREAM DECK (?streamdeck=1) --- */
+body.dg-streamdeck-mode #board,
+body.dg-streamdeck-mode #interface,
+body.dg-streamdeck-mode #ui-left,
+body.dg-streamdeck-mode #ui-right,
+body.dg-streamdeck-mode #ui-top,
+body.dg-streamdeck-mode #ui-bottom,
+body.dg-streamdeck-mode #hotbar,
+body.dg-streamdeck-mode #players,
+body.dg-streamdeck-mode #navigation,
+body.dg-streamdeck-mode #pause,
+body.dg-streamdeck-mode #fps {
+  display: none !important;
+}
+
+#dg-streamdeck-app {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #06090d;
+  color: #e2e8f0;
+  font-family: var(--dg-font-mono);
+  padding: 14px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sd-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(52, 211, 153, 0.35);
+  font-size: 13px;
+  font-weight: 900;
+  color: #6ee7b7;
+  letter-spacing: 1px;
+}
+
+.sd-badge {
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.25);
+  border: 1px solid #ef4444;
+  color: #fecaca;
+  font-size: 10px;
+}
+
+.sd-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sd-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #94a3b8;
+}
+
+.sd-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.sd-grid-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.sd-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 58px;
+  padding: 8px 6px;
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 8px;
+  color: #f8fafc;
+  font-family: var(--dg-font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.sd-btn:active {
+  transform: scale(0.96);
+}
+
+.sd-btn i {
+  font-size: 16px;
+}
+
+.sd-btn.is-active {
+  background: rgba(6, 78, 59, 0.75);
+  border-color: #34d399;
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.35);
+}
+
+.sd-btn.sd-danger { border-color: rgba(239, 68, 68, 0.65); background: rgba(69, 10, 10, 0.55); color: #fecaca; }
+.sd-btn.sd-cyan { border-color: rgba(34, 211, 238, 0.65); background: rgba(8, 51, 68, 0.55); color: #cffafe; }
+.sd-btn.sd-warn { border-color: rgba(245, 158, 11, 0.65); background: rgba(69, 26, 3, 0.55); color: #fde68a; }
+.sd-btn.sd-sfx { border-color: rgba(167, 139, 250, 0.55); background: rgba(46, 16, 101, 0.45); color: #ede9fe; }
+.sd-empty { grid-column: 1 / -1; font-size: 11px; opacity: 0.7; padding: 8px; }
