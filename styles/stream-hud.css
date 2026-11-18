@@ -2729,3 +2729,152 @@ body.koruja-stream-roleplay-mode .dg-pause-overlay {
   font-size: 8px;
   color: #e879f9;
 }
+
+/* --- CFTV CAMERA + EMF DETECTOR (IDLE COMBAT BOX) --- */
+.koruja-combat-box.has-cctv-emf {
+  padding: 0;
+  height: 176px;
+  overflow: hidden;
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  background: #030608;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.82);
+}
+
+.koruja-combat-box.has-cctv-emf.emf-4 {
+  border-color: rgba(245, 158, 11, 0.72);
+}
+
+.koruja-combat-box.has-cctv-emf.emf-5 {
+  border-color: rgba(239, 68, 68, 0.85);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.35), 0 8px 24px rgba(0, 0, 0, 0.85);
+}
+
+.dg-cctv-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.9;
+}
+
+.dg-cctv-tint {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(2, 8, 6, 0.55) 0%, transparent 40%, rgba(2, 6, 10, 0.88) 100%);
+  pointer-events: none;
+}
+
+.dg-cctv-hud {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 8px 11px;
+  font-family: var(--dg-font-mono);
+}
+
+.dg-cctv-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #a7f3d0;
+  text-shadow: 0 1px 4px #000;
+}
+
+.dg-cctv-cam {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dg-cctv-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+  animation: dgTapeBlink 1.1s infinite;
+}
+
+.dg-cctv-temp {
+  font-size: 9px;
+  color: #bae6fd;
+  background: rgba(8, 15, 22, 0.72);
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(186, 230, 253, 0.25);
+}
+
+.dg-cctv-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 8px;
+  background: rgba(5, 9, 13, 0.82);
+  border: 1px solid rgba(52, 211, 153, 0.28);
+  border-radius: 4px;
+}
+
+.dg-emf-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dg-emf-label {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #6ee7b7;
+}
+
+.emf-4 .dg-emf-label { color: #fcd34d; }
+.emf-5 .dg-emf-label { color: #fca5a5; }
+
+.dg-emf-leds {
+  display: flex;
+  gap: 4px;
+}
+
+.dg-emf-led {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.dg-emf-led.led-1.is-lit,
+.dg-emf-led.led-2.is-lit { background: #22c55e; box-shadow: 0 0 7px #22c55e; border-color: #86efac; }
+.dg-emf-led.led-3.is-lit { background: #eab308; box-shadow: 0 0 7px #eab308; border-color: #fde047; }
+.dg-emf-led.led-4.is-lit { background: #f97316; box-shadow: 0 0 8px #f97316; border-color: #fdba74; }
+.dg-emf-led.led-5.is-lit { background: #ef4444; box-shadow: 0 0 10px #ef4444; border-color: #fca5a5; animation: dgTapeBlink 0.7s infinite; }
+
+.dg-emf-wave {
+  width: 100px;
+  height: 18px;
+}
+
+@keyframes dgEmfFlow {
+  0% { stroke-dashoffset: 140; }
+  100% { stroke-dashoffset: 0; }
+}
+
+.dg-emf-path {
+  fill: none;
+  stroke: #34d399;
+  stroke-width: 1.6;
+  stroke-dasharray: 50 90;
+  animation: dgEmfFlow 1.8s linear infinite;
+}
+
+.emf-4 .dg-emf-path { stroke: #f59e0b; animation-duration: 1.0s; }
+.emf-5 .dg-emf-path { stroke: #ef4444; animation-duration: 0.6s; }

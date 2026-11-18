@@ -1552,14 +1552,53 @@ class KorujaStreamHUD {
           </div>
         </div>
       `;
-    } else if (showCombatBox) {
-      const roundText = game.combat?.started ? `${t("KORUJA_DG.HUD.Round")} ${String(game.combat.round).padStart(2, "0")}` : t("KORUJA_DG.HUD.Exploration");
-      const turnText = game.combat?.started && activeCombatant ? `${t("KORUJA_DG.HUD.TurnOf")}: ${escapeHtml(activeCombatant.name)}` : t("KORUJA_DG.HUD.OutOfCombat");
+    } else if (showCombatBox && game.combat?.started) {
+      const roundText = `${t("KORUJA_DG.HUD.Round")} ${String(game.combat.round).padStart(2, "0")}`;
+      const turnText = activeCombatant ? `${t("KORUJA_DG.HUD.TurnOf")}: ${escapeHtml(activeCombatant.name)}` : t("KORUJA_DG.HUD.OutOfCombat");
       combatHtml = `
         <div class="koruja-combat-box" style="left: ${combatCoords.x}px; top: ${combatCoords.y}px;">
           <div class="combat-label">${t("KORUJA_DG.HUD.Initiative")}</div>
           <div class="combat-round">${roundText}</div>
           <div class="combat-turn">${turnText}</div>
+        </div>
+      `;
+    } else if (showCombatBox) {
+      const anyCritical = actors.some(a => {
+        const h = getActorHealth(a);
+        const s = getActorSanity(a);
+        return h.value <= 2 || (s.bp > 0 && s.value <= s.bp);
+      });
+      const anyInjured = actors.some(a => getActorHealth(a).value < getActorHealth(a).max);
+      let emfLevel = 1;
+      if (threatMode !== "normal" || defconLevel === "1") emfLevel = 5;
+      else if (defconLevel === "2" || anyCritical) emfLevel = 4;
+      else if (defconLevel === "3" || anyInjured) emfLevel = 3;
+      else if (defconLevel === "4") emfLevel = 2;
+
+      const ledsHtml = [1, 2, 3, 4, 5].map(n =>
+        `<span class="dg-emf-led led-${n} ${emfLevel >= n ? "is-lit" : ""}"></span>`
+      ).join("");
+      const emfClass = emfLevel >= 5 ? "emf-5" : emfLevel >= 4 ? "emf-4" : emfLevel >= 3 ? "emf-3" : "emf-low";
+
+      combatHtml = `
+        <div class="koruja-combat-box has-cctv-emf ${emfClass}" style="left: ${combatCoords.x}px; top: ${combatCoords.y}px;">
+          <img class="dg-cctv-bg" src="modules/${MODULE_ID}/assets/cctv_casa_juno.webp" alt="CFTV Casa Juno">
+          <div class="dg-cctv-tint"></div>
+          <div class="dg-cctv-hud">
+            <div class="dg-cctv-top">
+              <span class="dg-cctv-cam"><span class="dg-cctv-dot"></span> CAM-01 // VARANDA</span>
+              <span class="dg-cctv-temp">-8°C // NEVASCA</span>
+            </div>
+            <div class="dg-cctv-bottom">
+              <div class="dg-emf-wrap">
+                <span class="dg-emf-label">EMF ${emfLevel}</span>
+                <div class="dg-emf-leds">${ledsHtml}</div>
+              </div>
+              <svg class="dg-emf-wave" viewBox="0 0 110 20" preserveAspectRatio="none">
+                <path class="dg-emf-path" d="M0,10 Q10,10 15,6 T30,10 T45,4 T60,15 T75,8 T90,12 T110,10" />
+              </svg>
+            </div>
+          </div>
         </div>
       `;
     }
