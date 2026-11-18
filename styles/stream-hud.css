@@ -2878,3 +2878,12 @@ body.koruja-stream-roleplay-mode .dg-pause-overlay {
 
 .emf-4 .dg-emf-path { stroke: #f59e0b; animation-duration: 1.0s; }
 .emf-5 .dg-emf-path { stroke: #ef4444; animation-duration: 0.6s; }
+
+/* --- DICE SO NICE 3D OVERLAY VISIBILITY --- */
+body.koruja-stream-mode-active #dice-box-canvas {
+  z-index: 100005 !important;
+  pointer-events: none !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
