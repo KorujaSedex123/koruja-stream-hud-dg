@@ -2,7 +2,7 @@
   "id": "koruja-stream-hud-dg",
   "title": "Koruja Stream HUD: Delta Green — Tactical OBS Overlay",
   "description": "Overlay tático e bodycam noir 100% nativo para Foundry VTT v14 (Delta Green) exibir HP, Sanidade (SAN), Ponto de Ruptura, Vontade (WP), Adaptações, ticker de rolagens d100 e alertas dramáticos no OBS Studio sem servidor externo.",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "library": false,
   "compatibility": {
     "minimum": "14",
@@ -45,7 +45,7 @@
   ],
   "url": "https://github.com/korujasedex123/koruja-stream-hud-dg",
   "manifest": "https://github.com/korujasedex123/koruja-stream-hud-dg/releases/latest/download/module.json",
-  "download": "https://github.com/korujasedex123/koruja-stream-hud-dg/releases/download/v1.9.0/module.zip",
+  "download": "https://github.com/korujasedex123/koruja-stream-hud-dg/releases/download/v1.9.1/module.zip",
   "readme": "README.md",
   "license": "LICENSE",
   "bugs": "https://github.com/korujasedex123/koruja-stream-hud-dg/issues",

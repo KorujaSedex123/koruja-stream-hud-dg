@@ -1488,6 +1488,7 @@ class KorujaStreamHUD {
         <div class="koruja-player-card ${stateClasses}"
              style="left: ${coords.x}px; top: ${coords.y}px;" data-actor-id="${actor.id}">
           <div class="koruja-roll-toast" id="koruja-roll-${actor.id}"></div>
+          ${disordersHtml}
           ${isDown ? `<div class="dg-kia-stamp">${t("KORUJA_DG.Card.KiaStamp")}</div>` : ""}
           <div class="koruja-card-inner">
             <div class="koruja-portrait-wrap">
@@ -1504,7 +1505,6 @@ class KorujaStreamHUD {
               ${sanHtml}
               ${wpHtml}
               ${ecgHtml}
-              ${disordersHtml}
               ${conditionsHtml}
             </div>
           </div>
